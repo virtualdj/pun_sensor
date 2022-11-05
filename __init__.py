@@ -34,30 +34,30 @@ async def async_setup(hass: HomeAssistant, config: ConfigEntry) -> bool:
     
 
 class PUNDataUpdateCoordinator(DataUpdateCoordinator):
+    session: ClientSession
+    nane: int
+
+    """ Gestione dell'aggiornamento da Home Assistant """
     def __init__(self, hass: HomeAssistant, config: ConfigEntry) -> None:
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=timedelta(seconds=10))
-        self.hub = PUNDataHub(async_get_clientsession(hass))
+        super().__init__(
+            hass,
+            _LOGGER,
+            # Nome dei dati (a fini di log)
+            name = DOMAIN,
+
+            # Intervallo di aggiornamento
+            update_interval=timedelta(seconds=10)
+        )
+
+        # Salva la sessione client
+        self.session = async_get_clientsession(hass)
         self.config = config
+        self.nane = 0
         _LOGGER.debug("Coordinator initialized")
    
     async def _async_update_data(self) -> list:
         _LOGGER.debug("Coordinator update requested")
-        return await self.hub.list_devices()
-
-
-class PUNDataHub:
-    session: ClientSession
-    nane: int
-    retries = 0
-
-    def __init__(self, session: ClientSession) -> None:
-        _LOGGER.debug("Hub initialized")
-        self.nane = 0
-        self.session = session
-
-    async def list_devices(self) -> list:
         self.nane = self.nane + 1
-        _LOGGER.debug("list_devices called (" + str(self.nane) + ")")
         devs = ["A", "B", "C"]
         return devs
 
