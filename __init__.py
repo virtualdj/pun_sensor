@@ -5,9 +5,6 @@ import logging
 from aiohttp import ClientSession
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.discovery import async_load_platform
@@ -55,9 +52,10 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.nane = 0
         _LOGGER.debug("Coordinator initialized")
    
-    async def _async_update_data(self) -> list:
+    async def _async_update_data(self):
         _LOGGER.debug("Coordinator update requested")
         self.nane = self.nane + 1
-        devs = ["A", "B", "C"]
-        return devs
+        #async with async_timeout.timeout(10):
+        #    return await self.my_api.fetch_data()
+        return
 
