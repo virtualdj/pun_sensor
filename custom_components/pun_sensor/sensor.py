@@ -9,7 +9,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator
 
-from . import PUNDataHub
+from . import PUNDataUpdateCoordinator
 from .const import DOMAIN, PUN_FASCIA_MONO, PUN_FASCIA_F1, PUN_FASCIA_F2, PUN_FASCIA_F3
 
 import logging
@@ -34,14 +34,14 @@ async def async_setup_platform(hass: HomeAssistant, config: ConfigEntry,
 
 
 class PUNSensorEntity(CoordinatorEntity, SensorEntity):
-    hub: PUNDataHub
+    coordinator: PUNDataUpdateCoordinator
     tipo: int
 
     def __init__(self, coordinator: DataUpdateCoordinator, tipo: int) -> None:
         super().__init__(coordinator)
 
         # Inizializza coordinator e tipo
-        self.hub = coordinator.hub
+        self.coordinator = coordinator
         self.tipo = tipo
 
         # Inizializza le proprietà comuni
@@ -50,7 +50,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
 
     @property
     def state(self):
-        return self.hub.nane
+        return self.coordinator.nane
 
     @property
     def unit_of_measurement(self):
