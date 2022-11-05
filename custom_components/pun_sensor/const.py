@@ -1,0 +1,1 @@
+DOMAIN = "pun_sensor"
