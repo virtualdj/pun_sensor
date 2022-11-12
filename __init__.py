@@ -37,12 +37,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigEntry) -> bool:
 
     # Salva i riferimenti al coordinator
     hass.data[DOMAIN] = {
-        "conf": conf,
-        "coordinator": coordinator,
+        'conf': conf,
+        'coordinator': coordinator,
     }
 
     # Crea le entità
-    hass.async_create_task(async_load_platform(hass, "sensor", DOMAIN, {}, config))
+    hass.async_create_task(async_load_platform(hass, 'sensor', DOMAIN, {}, config))
     return True
 
 class PUNDataUpdateCoordinator(DataUpdateCoordinator):
@@ -103,11 +103,11 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         
         # Apre la pagina per generare i cookie e i campi nascosti
         async with self.session.get(LOGIN_URL) as response:
-            soup = BeautifulSoup(await response.read(), features="html.parser")
+            soup = BeautifulSoup(await response.read(), features='html.parser')
         
         # Recupera i campi nascosti __VIEWSTATE e __EVENTVALIDATION per la prossima richiesta
-        viewstate = soup.find("input",{"name":"__VIEWSTATE"})['value']
-        eventvalidation = soup.find("input",{"name":"__EVENTVALIDATION"})['value']
+        viewstate = soup.find('input',{'name':'__VIEWSTATE'})['value']
+        eventvalidation = soup.find('input',{'name':'__EVENTVALIDATION'})['value']
         login_payload = {
             'ctl00$ContentPlaceHolder1$CBAccetto1': 'on',
             'ctl00$ContentPlaceHolder1$CBAccetto2': 'on',
@@ -118,10 +118,10 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # Effettua il login (che se corretto porta alla pagina di download XML grazie al 'ReturnUrl')
         async with self.session.post(LOGIN_URL, data=login_payload) as response:
-            soup = BeautifulSoup(await response.read(), features="html.parser")
+            soup = BeautifulSoup(await response.read(), features='html.parser')
 
         # Recupera i campi nascosti __VIEWSTATE per la prossima richiesta
-        viewstate = soup.find("input",{"name":"__VIEWSTATE"})['value']    
+        viewstate = soup.find('input',{'name':'__VIEWSTATE'})['value']    
         data_request_payload = {
             'ctl00$ContentPlaceHolder1$tbDataStart': date_start.strftime('%d/%m/%Y'),
             'ctl00$ContentPlaceHolder1$tbDataStop': date_today.strftime('%d/%m/%Y'),
