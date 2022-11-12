@@ -34,10 +34,8 @@ async def async_setup_platform(hass: HomeAssistant, config: ConfigEntry,
 
 
 class PUNSensorEntity(CoordinatorEntity, SensorEntity):
-    coordinator: PUNDataUpdateCoordinator
-    tipo: int
 
-    def __init__(self, coordinator: DataUpdateCoordinator, tipo: int) -> None:
+    def __init__(self, coordinator: PUNDataUpdateCoordinator, tipo: int) -> None:
         super().__init__(coordinator)
 
         # Inizializza coordinator e tipo
@@ -45,15 +43,22 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
         self.tipo = tipo
 
         # Inizializza le proprietà comuni
-        self._state = 0
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._available = False
+        self._native_value = 0
 
     @property
-    def state(self):
-        return self.coordinator.nane
+    def available(self):
+        """Determina se il valore è disponibile"""
+        return self.coordinator.orari[self.tipo] > 0
 
     @property
-    def unit_of_measurement(self):
+    def native_value(self):
+        """Valore corrente del sensore"""
+        return self.coordinator.pun[self.tipo]
+
+    @property
+    def native_unit_of_measurement(self):
         """Unita' di misura"""
         return "€/kWh"
 
