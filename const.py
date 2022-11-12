@@ -7,6 +7,7 @@ PUN_FASCIA_F1 = 1
 PUN_FASCIA_F2 = 2
 PUN_FASCIA_F3 = 3
 
-# Frequenza di aggiornamento
-AGGIORNAMENTO_FASCIA_OGNI_SECS = 15
-ORARIO_AGGIORNAMENTO_WEB = 1
+# Parametri configurabili da configuration.yaml
+CONF_SCAN_INTERVAL = "scan_interval"
+CONF_SCAN_HOUR = "scan_hour"
+CONF_ACTUAL_DATA_ONLY = "actual_data_only"

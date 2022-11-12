@@ -6,9 +6,12 @@ import zipfile, io
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree as et
 
+import voluptuous as vol
+
 from aiohttp import ClientSession
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
@@ -22,16 +25,25 @@ from .const import (
     PUN_FASCIA_F1,
     PUN_FASCIA_F2,
     PUN_FASCIA_F3,
-    AGGIORNAMENTO_FASCIA_OGNI_SECS,
-    ORARIO_AGGIORNAMENTO_WEB,
+    CONF_SCAN_INTERVAL,
+    CONF_SCAN_HOUR,
+    CONF_ACTUAL_DATA_ONLY,
 )
 
 import logging
 _LOGGER = logging.getLogger(__name__)
 
+# Parametri in configuration.yaml
+CONFIG_SCHEMA = vol.Schema({
+    DOMAIN: vol.Schema({
+            vol.Optional(CONF_SCAN_INTERVAL, default=15): vol.All(cv.positive_int, vol.Range(min=10)),
+            vol.Optional(CONF_SCAN_HOUR, default=1): vol.All(cv.positive_int, vol.Range(min=0, max=23)),
+            vol.Optional(CONF_ACTUAL_DATA_ONLY, default=False): cv.boolean,
+    })
+}, extra=vol.ALLOW_EXTRA)
+
 async def async_setup(hass: HomeAssistant, config: ConfigEntry) -> bool:
     """Set up PUN prices from a config entry"""
-    conf = config[DOMAIN]
     coordinator = PUNDataUpdateCoordinator(hass, config)
 
     # Aggiorna i dati iniziali per quando verrano aggiunte le entità
@@ -39,7 +51,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigEntry) -> bool:
 
     # Salva i riferimenti al coordinator
     hass.data[DOMAIN] = {
-        'conf': conf,
+        'conf': config[DOMAIN],
         'coordinator': coordinator,
     }
 
@@ -59,12 +71,12 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             name = DOMAIN,
 
             # Intervallo di aggiornamento
-            update_interval=timedelta(seconds=AGGIORNAMENTO_FASCIA_OGNI_SECS)
+            update_interval=timedelta(seconds=config[DOMAIN][CONF_SCAN_INTERVAL])
         )
 
         # Salva la sessione client e la configurazione
         self.session = async_get_clientsession(hass)
-        self.config = config
+        self.config = config[DOMAIN]
 
         # Inizializza i valori
         self.next_update = datetime.min
@@ -96,8 +108,13 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             return
         
         # Calcola l'intervallo di date per il mese corrente
-        date_today = date.today()
-        date_start = date(date_today.year, date_today.month, 1)
+        date_end = date.today()
+        date_start = date(date_end.year, date_end.month, 1)
+
+        # All'inizio del mese, aggiunge i valori del mese precedente
+        # a meno che CONF_ACTUAL_DATA_ONLY non sia impostato
+        if (not self.config[CONF_ACTUAL_DATA_ONLY]) and (date_end.day < 4):
+            date_start = date_start - timedelta(days=3)
 
         # URL del sito Mercato elettrico
         LOGIN_URL = 'https://www.mercatoelettrico.org/It/Tools/Accessodati.aspx?ReturnUrl=%2fIt%2fdownload%2fDownloadDati.aspx%3fval%3dMGP_Prezzi&val=MGP_Prezzi'
@@ -126,7 +143,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         viewstate = soup.find('input',{'name':'__VIEWSTATE'})['value']    
         data_request_payload = {
             'ctl00$ContentPlaceHolder1$tbDataStart': date_start.strftime('%d/%m/%Y'),
-            'ctl00$ContentPlaceHolder1$tbDataStop': date_today.strftime('%d/%m/%Y'),
+            'ctl00$ContentPlaceHolder1$tbDataStop': date_end.strftime('%d/%m/%Y'),
             'ctl00$ContentPlaceHolder1$btnScarica': 'scarica+file+xml+compresso',
             '__VIEWSTATE': viewstate
         }
@@ -206,7 +223,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.pun[PUN_FASCIA_F3] = mean(f3)
 
         # Imposta la data della prossima esecuzione (all'ora definita di domani)
-        self.next_update = (datetime.today() + timedelta(days=1)).replace(hour=ORARIO_AGGIORNAMENTO_WEB, 
+        self.next_update = (datetime.today() + timedelta(days=1)).replace(hour=self.config[CONF_SCAN_HOUR], 
                                         minute=0, second=0, microsecond=0)
         
         # Logga i dati
