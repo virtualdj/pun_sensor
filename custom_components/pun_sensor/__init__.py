@@ -68,14 +68,29 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.last_successful_update = datetime.min
         self.pun = [0.0, 0.0, 0.0, 0.0]
         self.orari = [0, 0, 0, 0]
-        _LOGGER.debug("Coordinator inizializzato.")
+        self.fascia_corrente = None
+        self.ora_precedente = 25
+        self.giorno_festivo = None
+        _LOGGER.debug('Coordinator inizializzato.')
   
     async def _async_update_data(self):
         """Aggiornamento dati a intervalli prestabiliti"""
 
+        # Ottiene l'ora corrente
+        ora_corrente = datetime.now().hour
+        if ora_corrente != self.ora_precedente:
+            # E' cambiata l'ora, potrebbe essere cambiata la fascia
+            if ora_corrente < self.ora_precedente:
+                # E' cambiato anche il giorno
+                self.giorno_festivo = date.today() in holidays.IT()
+
+            # Aggiorna la fascia corrente
+            self.fascia_corrente = get_fascia(date.today(), self.giorno_festivo, ora_corrente)      
+            self.ora_precedente = ora_corrente
+
         # Verifica che sia passato il tempo minimo dall'ultimo controllo
         if (datetime.now() - self.last_successful_update).total_seconds() < 60:
-            _LOGGER.debug("Aggiornamento dati non necessario (già eseguito).")
+            _LOGGER.debug('Aggiornamento dati web non necessario (già eseguito).')
             return
         
         # Calcola l'intervallo di date per il mese corrente

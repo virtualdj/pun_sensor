@@ -10,7 +10,13 @@ from homeassistant.helpers.typing import DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator
 
 from . import PUNDataUpdateCoordinator
-from .const import DOMAIN, PUN_FASCIA_MONO, PUN_FASCIA_F1, PUN_FASCIA_F2, PUN_FASCIA_F3
+from .const import (
+    DOMAIN,
+    PUN_FASCIA_MONO,
+    PUN_FASCIA_F1,
+    PUN_FASCIA_F2,
+    PUN_FASCIA_F3,
+)
 
 import logging
 _LOGGER = logging.getLogger(__name__)
@@ -19,7 +25,6 @@ async def async_setup_platform(hass: HomeAssistant, config: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None) -> None:
     """Inizializza e crea i sensori"""
-    _LOGGER.debug("Sensors async setup")
 
     # Restituisce il coordinator
     coordinator = hass.data[DOMAIN]["coordinator"]
@@ -30,6 +35,8 @@ async def async_setup_platform(hass: HomeAssistant, config: ConfigEntry,
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_F1))
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_F2))
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_F3))
+    entities.append(FasciaPUNSensorEntity(coordinator))
+    entities.append(PrezzoFasciaPUNSensorEntity(coordinator))
     async_add_entities(entities, update_before_add=True)
 
 def fmt_float(num: float):
@@ -37,6 +44,7 @@ def fmt_float(num: float):
     return format(round(num, 5), '.6f')
 
 class PUNSensorEntity(CoordinatorEntity, SensorEntity):
+    """Sensore PUN relativo al prezzo medio mensile per fasce"""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator, tipo: int) -> None:
         super().__init__(coordinator)
@@ -67,7 +75,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
 
     @property
     def state(self) -> str:
-        return fmt_float(self.coordinator.pun[self.tipo])
+        return fmt_float(self.native_value)
 
     @property
     def icon(self) -> str:
@@ -101,3 +109,87 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
             return "PUN mono-orario"
         else:
             return None
+
+class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
+    """Sensore che rappresenta la fascia PUN corrente"""
+
+    def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
+        super().__init__(coordinator)
+
+        # Inizializza coordinator
+        self.coordinator = coordinator
+
+    @property
+    def available(self) -> bool:
+        """Determina se il valore è disponibile"""
+        return self.coordinator.fascia_corrente is not None
+    
+    @property
+    def state(self) -> str:
+        """Restituisce la fascia corrente come stato"""
+        if (self.coordinator.fascia_corrente == 3):
+            return "F3"
+        elif (self.coordinator.fascia_corrente == 2):
+            return "F2"
+        elif (self.coordinator.fascia_corrente == 1):
+            return "F1"
+        else:
+            return None
+
+    @property
+    def icon(self) -> str:
+        """Icona da usare nel frontend"""
+        return "mdi:timeline-clock-outline"
+
+    @property
+    def entity_id(self) -> str:
+        """Restituisce l'entity id del sensore"""
+        return DOMAIN + ".fascia_corrente"
+
+    @property
+    def name(self) -> str:
+        """Restituisce il nome del sensore"""
+        return "Fascia corrente"
+
+class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity):
+    """Sensore che rappresenta il prezzo PUN della fascia corrente"""
+
+    @property
+    def state_class(self) -> str:
+        return SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self) -> float:
+        """Restituisce il prezzo della fascia corrente"""
+        if (self.coordinator.fascia_corrente == 3):
+            return self.coordinator.pun[PUN_FASCIA_F3]
+        elif (self.coordinator.fascia_corrente == 2):
+            return self.coordinator.pun[PUN_FASCIA_F2]
+        elif (self.coordinator.fascia_corrente == 1):
+            return self.coordinator.pun[PUN_FASCIA_F1]
+        else:
+            return None
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Unita' di misura"""
+        return "€/kWh"
+
+    @property
+    def state(self) -> str:
+        return fmt_float(self.native_value)
+
+    @property
+    def icon(self) -> str:
+        """Icona da usare nel frontend"""
+        return "mdi:currency-eur"
+
+    @property
+    def entity_id(self) -> str:
+        """Restituisce l'entity id del sensore"""
+        return DOMAIN + ".prezzo_fascia_corrente"
+
+    @property
+    def name(self) -> str:
+        """Restituisce il nome del sensore"""
+        return "Prezzo fascia corrente"
