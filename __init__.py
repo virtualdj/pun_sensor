@@ -1,7 +1,5 @@
-"""PUN prices integration."""
+"""Prezzi mensili PUN"""
 from datetime import timedelta
-import logging
-
 from aiohttp import ClientSession
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
@@ -10,7 +8,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.helpers.discovery import async_load_platform
 
 from .const import DOMAIN
+import random #Temporary
 
+import logging
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup(hass: HomeAssistant, config: ConfigEntry) -> bool:
@@ -32,7 +32,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigEntry) -> bool:
 
 class PUNDataUpdateCoordinator(DataUpdateCoordinator):
     session: ClientSession
-    nane: int
 
     """ Gestione dell'aggiornamento da Home Assistant """
     def __init__(self, hass: HomeAssistant, config: ConfigEntry) -> None:
@@ -46,15 +45,26 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=10)
         )
 
-        # Salva la sessione client
+        # Salva la sessione client e la configurazione
         self.session = async_get_clientsession(hass)
         self.config = config
-        self.nane = 0
+
+        # Inizializza i valori
+        self.pun = [0.0, 0.0, 0.0, 0.0]
+        self.orari = [0, 0, 0, 0]
+        # TODO: Provare a inventare questi valori e leggerli dall'Entity tramite l'indice (tipo)
         _LOGGER.debug("Coordinator initialized")
    
     async def _async_update_data(self):
         _LOGGER.debug("Coordinator update requested")
-        self.nane = self.nane + 1
+        self.orari[0] = random.randint(0, 2)
+        self.orari[1] = 1
+        self.orari[2] = random.randint(0, 2)
+        self.orari[3] = 1
+        for x in range(4):
+            self.pun[x] = random.randint(20, 50) / 2
+
+        _LOGGER.debug('Valori PUN: ' + ', '.join(str(e) for e in self.pun))
         #async with async_timeout.timeout(10):
         #    return await self.my_api.fetch_data()
         return
