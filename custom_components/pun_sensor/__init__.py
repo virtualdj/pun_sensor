@@ -22,6 +22,8 @@ from .const import (
     PUN_FASCIA_F1,
     PUN_FASCIA_F2,
     PUN_FASCIA_F3,
+    AGGIORNAMENTO_FASCIA_OGNI_SECS,
+    ORARIO_AGGIORNAMENTO_WEB,
 )
 
 import logging
@@ -57,7 +59,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             name = DOMAIN,
 
             # Intervallo di aggiornamento
-            update_interval=timedelta(seconds=10)
+            update_interval=timedelta(seconds=AGGIORNAMENTO_FASCIA_OGNI_SECS)
         )
 
         # Salva la sessione client e la configurazione
@@ -65,7 +67,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.config = config
 
         # Inizializza i valori
-        self.last_successful_update = datetime.min
+        self.next_update = datetime.min
         self.pun = [0.0, 0.0, 0.0, 0.0]
         self.orari = [0, 0, 0, 0]
         self.fascia_corrente = None
@@ -88,8 +90,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.fascia_corrente = get_fascia(date.today(), self.giorno_festivo, ora_corrente)      
             self.ora_precedente = ora_corrente
 
-        # Verifica che sia passato il tempo minimo dall'ultimo controllo
-        if (datetime.now() - self.last_successful_update).total_seconds() < 60:
+        # Verifica che sia arrivata l'ora del prossimo controllo
+        if (self.next_update > datetime.now()):
             _LOGGER.debug('Aggiornamento dati web non necessario (già eseguito).')
             return
         
@@ -203,10 +205,14 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         if self.orari[PUN_FASCIA_F3] > 0:
             self.pun[PUN_FASCIA_F3] = mean(f3)
 
-        # Aggiorna la data dell'ultima esecuzione
-        self.last_successful_update = datetime.now()
+        # Imposta la data della prossima esecuzione (all'ora definita di domani)
+        self.next_update = (datetime.today() + timedelta(days=1)).replace(hour=ORARIO_AGGIORNAMENTO_WEB, 
+                                        minute=0, second=0, microsecond=0)
+        
+        # Logga i dati
         _LOGGER.debug('Numero di dati: ' + ', '.join(str(i) for i in self.orari))
         _LOGGER.debug('Valori PUN: ' + ', '.join(str(f) for f in self.pun))
+        _LOGGER.debug('Prossimo aggiornamento web: ' + self.next_update.strftime('%d/%m/%Y %H:%M:%S'))
         return
 
 def get_fascia(data, festivo, ora):
