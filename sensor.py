@@ -32,6 +32,9 @@ async def async_setup_platform(hass: HomeAssistant, config: ConfigEntry,
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_F3))
     async_add_entities(entities, update_before_add=True)
 
+def fmt_float(num: float):
+    """Formatta la media come numero decimale con 6 decimali (ma arrotondato al quinto)"""
+    return format(round(num, 5), '.6f')
 
 class PUNSensorEntity(CoordinatorEntity, SensorEntity):
 
@@ -48,27 +51,31 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
         self._native_value = 0
 
     @property
-    def available(self):
+    def available(self) -> bool:
         """Determina se il valore è disponibile"""
         return self.coordinator.orari[self.tipo] > 0
 
     @property
-    def native_value(self):
+    def native_value(self) -> float:
         """Valore corrente del sensore"""
         return self.coordinator.pun[self.tipo]
 
     @property
-    def native_unit_of_measurement(self):
+    def native_unit_of_measurement(self) -> str:
         """Unita' di misura"""
         return "€/kWh"
 
     @property
-    def icon(self):
+    def state(self) -> str:
+        return fmt_float(self.coordinator.pun[self.tipo])
+
+    @property
+    def icon(self) -> str:
         """Icona da usare nel frontend"""
         return "mdi:chart-line"
 
     @property
-    def entity_id(self):
+    def entity_id(self) -> str:
         """Restituisce l'entity id del sensore"""
         if (self.tipo == PUN_FASCIA_F3):
             return DOMAIN + ".fascia_f3"
@@ -82,7 +89,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
             return None
 
     @property
-    def name(self):
+    def name(self) -> str:
         """Restituisce il nome del sensore"""
         if (self.tipo == PUN_FASCIA_F3):
             return "PUN fascia F3"

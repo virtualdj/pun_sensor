@@ -1,10 +1,10 @@
 {
   "domain": "pun_sensor",
-  "name": "PUN Price Sensor",
+  "name": "PUN del mese",
   "documentation": "https://github.com/home-assistant/example-custom-config/tree/master/custom_components/example_sensor/",
   "dependencies": [],
   "codeowners": [],
-  "requirements": [],
+  "requirements": ["holidays", "bs4"],
   "iot_class": "local_polling",
   "version": "0.1.0"
 }
