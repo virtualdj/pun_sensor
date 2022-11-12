@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import DiscoveryInfoType
-from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import PUNDataUpdateCoordinator
 from .const import (
@@ -27,7 +27,7 @@ async def async_setup_platform(hass: HomeAssistant, config: ConfigEntry,
     """Inizializza e crea i sensori"""
 
     # Restituisce il coordinator
-    coordinator = hass.data[DOMAIN]["coordinator"]
+    coordinator = hass.data[DOMAIN]['coordinator']
 
     # Aggiunge i sensori (legati al coordinator)
     entities = []
