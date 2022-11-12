@@ -10,27 +10,38 @@ from aiohttp import ClientSession
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 from homeassistant.helpers.discovery import async_load_platform
 
-from .const import DOMAIN, PUN_FASCIA_MONO, PUN_FASCIA_F1, PUN_FASCIA_F2, PUN_FASCIA_F3
+from .const import (
+    DOMAIN,
+    PUN_FASCIA_MONO,
+    PUN_FASCIA_F1,
+    PUN_FASCIA_F2,
+    PUN_FASCIA_F3,
+)
 
 import logging
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup(hass: HomeAssistant, config: ConfigEntry) -> bool:
     """Set up PUN prices from a config entry"""
-    _LOGGER.debug("Main initialization")
     conf = config[DOMAIN]
     coordinator = PUNDataUpdateCoordinator(hass, config)
 
-    # Fetch initial data so we have data when entities subscribe
+    # Aggiorna i dati iniziali per quando verrano aggiunte le entità
     await coordinator.async_refresh()
 
+    # Salva i riferimenti al coordinator
     hass.data[DOMAIN] = {
         "conf": conf,
         "coordinator": coordinator,
     }
+
+    # Crea le entità
     hass.async_create_task(async_load_platform(hass, "sensor", DOMAIN, {}, config))
     return True
 
@@ -110,9 +121,10 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                 archive = zipfile.ZipFile(io.BytesIO(await response.read()))
             except:
                 # Esce perché l'output non è uno ZIP
-                raise SystemExit('ERRORE: errore durante il download dei dati dal sito.')
+                raise UpdateFailed('Archivio ZIP scaricato dal sito non valido.')
 
-        _LOGGER.debug('File trovati nell\'archivio: ' + ', '.join(str(fn) for fn in archive.namelist()))
+        # Mostra i file nell'archivio
+        _LOGGER.debug(f'{ len(archive.namelist()) } file trovati nell\'archivio (' + ', '.join(str(fn) for fn in archive.namelist()) + ').')
 
         # Carica le festività
         it_holidays = holidays.IT()
@@ -175,8 +187,11 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.pun[PUN_FASCIA_F2] = mean(f2)
         if self.orari[PUN_FASCIA_F3] > 0:
             self.pun[PUN_FASCIA_F3] = mean(f3)
-        self.last_successful_update = datetime.now()
 
+        # Aggiorna la data dell'ultima esecuzione
+        self.last_successful_update = datetime.now()
+        _LOGGER.debug('Numero di dati: ' + ', '.join(str(i) for i in self.orari))
+        _LOGGER.debug('Valori PUN: ' + ', '.join(str(f) for f in self.pun))
         return
 
 def get_fascia(data, festivo, ora):
