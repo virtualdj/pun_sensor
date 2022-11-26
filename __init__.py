@@ -33,6 +33,9 @@ from .const import (
 import logging
 _LOGGER = logging.getLogger(__name__)
 
+# Definisce i tipi di entità
+PLATFORMS: list[str] = ["sensor"]
+
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     """Impostazione dell'integrazione da configurazione Home Assistant"""
     # Salva il coordinator nella configurazione
@@ -40,7 +43,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
 
     # Crea i sensori con la configurazione specificata
     _LOGGER.info('async_setup_entry -> ' + str(config.data[CONF_SCAN_HOUR]))
-    hass.config_entries.async_setup_platforms(config, {'sensor'})
+    hass.config_entries.async_setup_platforms(config, PLATFORMS)
     return True
 
 
@@ -48,7 +51,7 @@ async def async_unload_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     """Rimozione dell'integrazione da Home Assistant"""
     # Scarica i sensori (disabilitando di conseguenza il coordinator)
     _LOGGER.info('async_unload_entry')
-    unload_ok = await hass.config_entries.async_unload_platforms(config, {'sensor'})
+    unload_ok = await hass.config_entries.async_unload_platforms(config, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(config.entry_id)
 
