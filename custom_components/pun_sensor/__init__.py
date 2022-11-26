@@ -1,4 +1,4 @@
-"""Prezzi mensili PUN"""
+"""Prezzi PUN del mese"""
 from datetime import date, timedelta, datetime
 import holidays
 from statistics import mean
@@ -33,37 +33,32 @@ from .const import (
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-# Parametri in configuration.yaml
-CONFIG_SCHEMA = vol.Schema({
-    DOMAIN: vol.Schema({
-            vol.Optional(CONF_SCAN_INTERVAL, default=15): vol.All(cv.positive_int, vol.Range(min=10)),
-            vol.Optional(CONF_SCAN_HOUR, default=1): vol.All(cv.positive_int, vol.Range(min=0, max=23)),
-            vol.Optional(CONF_ACTUAL_DATA_ONLY, default=False): cv.boolean,
-    })
-}, extra=vol.ALLOW_EXTRA)
+async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
+    """Impostazione dell'integrazione da configurazione Home Assistant"""
+    # Salva il coordinator nella configurazione
+    hass.data.setdefault(DOMAIN, {})[config.entry_id] = PUNDataUpdateCoordinator(hass, config.data)
 
-async def async_setup(hass: HomeAssistant, config: ConfigEntry) -> bool:
-    """Set up PUN prices from a config entry"""
-    coordinator = PUNDataUpdateCoordinator(hass, config)
-
-    # Aggiorna i dati iniziali per quando verrano aggiunte le entità
-    await coordinator.async_refresh()
-
-    # Salva i riferimenti al coordinator
-    hass.data[DOMAIN] = {
-        'conf': config[DOMAIN],
-        'coordinator': coordinator,
-    }
-
-    # Crea le entità
-    hass.async_create_task(async_load_platform(hass, 'sensor', DOMAIN, {}, config))
+    # Crea i sensori con la configurazione specificata
+    _LOGGER.info('async_setup_entry -> ' + str(config.data[CONF_SCAN_HOUR]))
+    hass.config_entries.async_setup_platforms(config, {'sensor'})
     return True
+
+
+async def async_unload_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
+    """Rimozione dell'integrazione da Home Assistant"""
+    # Scarica i sensori (disabilitando di conseguenza il coordinator)
+    _LOGGER.info('async_unload_entry')
+    unload_ok = await hass.config_entries.async_unload_platforms(config, {'sensor'})
+    if unload_ok:
+        hass.data[DOMAIN].pop(config.entry_id)
+
+    return unload_ok
 
 class PUNDataUpdateCoordinator(DataUpdateCoordinator):
     session: ClientSession
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry) -> None:
-        """ Gestione dell'aggiornamento da Home Assistant """
+        """Gestione dell'aggiornamento da Home Assistant"""
         super().__init__(
             hass,
             _LOGGER,
@@ -71,12 +66,12 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             name = DOMAIN,
 
             # Intervallo di aggiornamento
-            update_interval=timedelta(seconds=config[DOMAIN][CONF_SCAN_INTERVAL])
+            update_interval=timedelta(seconds=config[CONF_SCAN_INTERVAL])
         )
 
         # Salva la sessione client e la configurazione
         self.session = async_get_clientsession(hass)
-        self.config = config[DOMAIN]
+        self.config = config
 
         # Inizializza i valori
         self.next_update = datetime.min
@@ -85,7 +80,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.fascia_corrente = None
         self.ora_precedente = 25
         self.giorno_festivo = None
-        _LOGGER.debug('Coordinator inizializzato.')
+        _LOGGER.debug('Coordinator inizializzato per l\'esecuzione ogni %s secondi.', config[CONF_SCAN_INTERVAL])
   
     async def _async_update_data(self):
         """Aggiornamento dati a intervalli prestabiliti"""

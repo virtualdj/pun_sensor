@@ -21,13 +21,14 @@ from .const import (
 import logging
 _LOGGER = logging.getLogger(__name__)
 
-async def async_setup_platform(hass: HomeAssistant, config: ConfigEntry,
+async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None) -> None:
     """Inizializza e crea i sensori"""
 
     # Restituisce il coordinator
-    coordinator = hass.data[DOMAIN]['coordinator']
+    _LOGGER.info('async_setup_entry in sensor.py')
+    coordinator = hass.data[DOMAIN][config.entry_id]
 
     # Aggiunge i sensori (legati al coordinator)
     entities = []
@@ -38,6 +39,7 @@ async def async_setup_platform(hass: HomeAssistant, config: ConfigEntry,
     entities.append(FasciaPUNSensorEntity(coordinator))
     entities.append(PrezzoFasciaPUNSensorEntity(coordinator))
     async_add_entities(entities, update_before_add=True)
+    
 
 def fmt_float(num: float):
     """Formatta la media come numero decimale con 6 decimali (ma arrotondato al quinto)"""
