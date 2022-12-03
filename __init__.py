@@ -81,6 +81,7 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
 
     if config.options[CONF_ACTUAL_DATA_ONLY] != coordinator.actual_data_only:
         coordinator.actual_data_only = config.options[CONF_ACTUAL_DATA_ONLY]
+        coordinator.next_update = datetime.min
         _LOGGER.debug('Nuovo valore \'usa dati reali\': %s.', coordinator.actual_data_only)
 
     if config.options[CONF_SCAN_INTERVAL] != coordinator.update_interval.total_seconds():
