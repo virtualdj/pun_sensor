@@ -76,9 +76,12 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
         # Aggiorna l'ora di scansione
         coordinator.scan_hour = config.options[CONF_SCAN_HOUR]
 
-        # Imposta la data della prossima esecuzione (all'ora definita di domani)
-        coordinator.next_update = (datetime.today() + timedelta(days=1)).replace(hour=coordinator.scan_hour,
+        # Calcola la data della prossima esecuzione (all'ora definita)
+        coordinator.next_update = datetime.today().replace(hour=coordinator.scan_hour,
                                     minute=0, second=0, microsecond=0)
+        if coordinator.next_update <= datetime.today():
+            # Se l'evento è già trascorso la esegue domani alla stessa ora
+            coordinator.next_update = coordinator.next_update + timedelta(days=1)
         _LOGGER.debug('Prossimo aggiornamento web: ' + coordinator.next_update.strftime('%d/%m/%Y %H:%M:%S'))
 
     if config.options[CONF_ACTUAL_DATA_ONLY] != coordinator.actual_data_only:
