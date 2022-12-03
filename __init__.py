@@ -44,8 +44,6 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[config.entry_id] = coordinator
 
     # Crea i sensori con la configurazione specificata
-    _LOGGER.info('async_setup_entry -> ' + str(config.data[CONF_SCAN_HOUR]))
-    _LOGGER.info('###### setup_options = ' + str(config.options.get(CONF_ACTUAL_DATA_ONLY, 'default')))
     hass.config_entries.async_setup_platforms(config, PLATFORMS)
 
     # Registra il callback di modifica opzioni
@@ -103,16 +101,15 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             name = DOMAIN,
 
             # Intervallo di aggiornamento
-            update_interval=timedelta(seconds=config.data[CONF_SCAN_INTERVAL])
+            update_interval=timedelta(seconds=config.options.get(CONF_SCAN_INTERVAL, config.data[CONF_SCAN_INTERVAL]))
         )
 
         # Salva la sessione client e la configurazione
         self.session = async_get_clientsession(hass)
 
-        # Inizializza i valori di configurazione
-        self.config = config.data
-        self.actual_data_only = self.config[CONF_ACTUAL_DATA_ONLY]
-        self.scan_hour = self.config[CONF_SCAN_HOUR]
+        # Inizializza i valori di configurazione (dalle opzioni o dalla configurazione iniziale)
+        self.actual_data_only = config.options.get(CONF_ACTUAL_DATA_ONLY, config.data[CONF_ACTUAL_DATA_ONLY])
+        self.scan_hour = config.options.get(CONF_SCAN_HOUR, config.data[CONF_SCAN_HOUR])
 
         # Inizializza i valori di default
         self.next_update = datetime.min
@@ -121,11 +118,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.fascia_corrente = None
         self.ora_precedente = 25
         self.giorno_festivo = None
-        _LOGGER.debug('Coordinator inizializzato per l\'esecuzione ogni %d secondi.', self.update_interval.total_seconds())
-  
-    def config(self, config: ConfigEntry) -> None:
-        _LOGGER.info('###### Config update?')   
-
+        _LOGGER.debug('Coordinator inizializzato per l\'esecuzione ogni %d secondi (con \'usa dati reali\' = %s).', self.update_interval.total_seconds(), self.actual_data_only)
 
     async def _async_update_data(self):
         """Aggiornamento dati a intervalli prestabiliti"""
