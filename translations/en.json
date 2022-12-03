@@ -4,8 +4,8 @@
       "user": {
         "title": "PUN scraping settings",
         "data": {
-          "scan_interval": "Scan interval (seconds)",
-          "scan_hour": "Scan start hour (0-23)",
+          "scan_interval": "Slots scan interval (seconds)",
+          "scan_hour": "Web download start hour (0-23)",
           "actual_data_only": "Use only real data at month start"
         }
       }
@@ -14,7 +14,7 @@
       "unknown": "Errore sconosciuto"
     },
     "abort": {
-      "already_configured": "Integrazione già configurata."
+      "already_configured": "Integration already configured."
     }
   },
   "options": {
@@ -22,8 +22,8 @@
       "init": {
         "title": "Edit PUN scraping settings",
         "data": {
-          "scan_interval": "Scan interval (seconds)",
-          "scan_hour": "Scan start hour (0-23)",
+          "scan_interval": "Slots scan interval (seconds)",
+          "scan_hour": "Web download start hour (0-23)",
           "actual_data_only": "Use only real data at month start"
         }
       }
