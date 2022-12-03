@@ -14,7 +14,7 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 class PUNOptionsFlow(config_entries.OptionsFlow):
-    """Opzioni per prezzi PUN"""
+    """Opzioni per prezzi PUN (= riconfigurazione successiva)"""
 
     def __init__(self, entry: config_entries.ConfigEntry) -> None:
         """Inizializzazione options flow"""
@@ -24,31 +24,26 @@ class PUNOptionsFlow(config_entries.OptionsFlow):
         """Gestisce le opzioni"""
         errors = {}
         if user_input is not None:
-            # Validate user input
-            if user_input[CONF_SCAN_HOUR] > 10:
-                # See next section on create entry usage
-                return self.async_create_entry(
-                    title="PUN",
-                    data=user_input
-                )
+            # Configurazione valida (validazione integrata nello schema)
+            return self.async_create_entry(
+                title='PUN',
+                data=user_input
+            )
 
-            #errors["base"] = "auth_error"
-            errors[CONF_SCAN_HOUR] = "invalid_auth"
-
-        # Schema dati richiesti
+        # Schema dati di opzione (con default sui valori attuali)
         data_schema = {
             vol.Required(CONF_SCAN_HOUR, default=self.config_entry.options.get(CONF_SCAN_HOUR, self.config_entry.data[CONF_SCAN_HOUR])): vol.All(cv.positive_int, vol.Range(min=0, max=23)),
             vol.Optional(CONF_SCAN_INTERVAL, default=self.config_entry.options.get(CONF_SCAN_INTERVAL, self.config_entry.data[CONF_SCAN_INTERVAL])): vol.All(cv.positive_int, vol.Range(min=10)),
             vol.Optional(CONF_ACTUAL_DATA_ONLY, default=self.config_entry.options.get(CONF_ACTUAL_DATA_ONLY, self.config_entry.data[CONF_ACTUAL_DATA_ONLY])): cv.boolean,
         }
 
+        # Mostra la schermata di configurazione, con gli eventuali errori
         return self.async_show_form(
             step_id="init", data_schema=vol.Schema(data_schema), errors=errors
         )
-
     
 class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Configurazione per prezzi PUN"""
+    """Configurazione per prezzi PUN (= prima configurazione)"""
 
     # Versione della configurazione (per utilizzi futuri)
     VERSION = 1
@@ -65,24 +60,20 @@ class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Gestione prima configurazione da Home Assistant"""
         errors = {}
         if user_input is not None:
-            # Validate user input
-            if user_input[CONF_SCAN_HOUR] > 10:
-                # See next section on create entry usage
-                return self.async_create_entry(
-                    title="PUN",
-                    data=user_input
-                )
+            # Configurazione valida (validazione integrata nello schema)
+            return self.async_create_entry(
+                title='PUN',
+                data=user_input
+            )
 
-            #errors["base"] = "auth_error"
-            errors[CONF_SCAN_HOUR] = "invalid_auth"
-
-        # Schema dati richiesti
+        # Schema dati di configurazione (con default fissi)
         data_schema = {
             vol.Required(CONF_SCAN_HOUR, default=1): vol.All(cv.positive_int, vol.Range(min=0, max=23)),
-            vol.Optional(CONF_SCAN_INTERVAL, default=15): vol.All(cv.positive_int, vol.Range(min=10)),
+            vol.Optional(CONF_SCAN_INTERVAL, default=10): vol.All(cv.positive_int, vol.Range(min=10)),
             vol.Optional(CONF_ACTUAL_DATA_ONLY, default=False): cv.boolean,
         }
 
+        # Mostra la schermata di configurazione, con gli eventuali errori
         return self.async_show_form(
             step_id="user", data_schema=vol.Schema(data_schema), errors=errors
         )

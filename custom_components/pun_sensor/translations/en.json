@@ -4,22 +4,29 @@
       "user": {
         "title": "Impostazioni scraping PUN",
         "data": {
-          "host": "Nome host",
-          "scan_interval": "Intervallo di scansione (minuti)",
-          "scan_hour": "Orario inizio scansione",
-          "actual_data_only": "Usa solo dati reali ad inizio mese",
-          "username": "[%key:common::config_flow::data::username%]",
-          "password": "[%key:common::config_flow::data::password%]"
+          "scan_interval": "Intervallo di scansione (secondi)",
+          "scan_hour": "Ora inizio scansione (0-23)",
+          "actual_data_only": "Usa solo dati reali ad inizio mese"
         }
       }
     },
     "error": {
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
-      "unknown": "[%key:common::config_flow::error::unknown%]"
+      "unknown": "Errore sconosciuto"
     },
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+      "already_configured": "Integrazione già configurata"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Modifica impostazioni scraping PUN",
+        "data": {
+          "scan_interval": "Intervallo di scansione (secondi)",
+          "scan_hour": "Ora inizio scansione (0-23)",
+          "actual_data_only": "Usa solo dati reali ad inizio mese"
+        }
+      }
     }
   }
 }
