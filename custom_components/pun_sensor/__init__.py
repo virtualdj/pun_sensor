@@ -38,8 +38,9 @@ PLATFORMS: list[str] = ["sensor"]
 
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     """Impostazione dell'integrazione da configurazione Home Assistant"""
+    
     # Salva il coordinator nella configurazione
-    coordinator = PUNDataUpdateCoordinator(hass, config.data)
+    coordinator = PUNDataUpdateCoordinator(hass, config)
     hass.data.setdefault(DOMAIN, {})[config.entry_id] = coordinator
 
     # Crea i sensori con la configurazione specificata
@@ -57,6 +58,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     """Rimozione dell'integrazione da Home Assistant"""
+    
     # Scarica i sensori (disabilitando di conseguenza il coordinator)
     _LOGGER.info('async_unload_entry')
     unload_ok = await hass.config_entries.async_unload_platforms(config, PLATFORMS)
@@ -101,14 +103,14 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             name = DOMAIN,
 
             # Intervallo di aggiornamento
-            update_interval=timedelta(seconds=config[CONF_SCAN_INTERVAL])
+            update_interval=timedelta(seconds=config.data[CONF_SCAN_INTERVAL])
         )
 
         # Salva la sessione client e la configurazione
         self.session = async_get_clientsession(hass)
 
         # Inizializza i valori di configurazione
-        self.config = config
+        self.config = config.data
         self.actual_data_only = self.config[CONF_ACTUAL_DATA_ONLY]
         self.scan_hour = self.config[CONF_SCAN_HOUR]
 
