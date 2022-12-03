@@ -2,11 +2,11 @@
   "config": {
     "step": {
       "user": {
-        "title": "Impostazioni scraping PUN",
+        "title": "PUN scraping settings",
         "data": {
-          "scan_interval": "Intervallo di scansione (secondi)",
-          "scan_hour": "Ora inizio scansione (0-23)",
-          "actual_data_only": "Usa solo dati reali ad inizio mese"
+          "scan_interval": "Scan interval (seconds)",
+          "scan_hour": "Scan start hour (0-23)",
+          "actual_data_only": "Use only real data at month start"
         }
       }
     },
@@ -14,17 +14,17 @@
       "unknown": "Errore sconosciuto"
     },
     "abort": {
-      "already_configured": "Integrazione già configurata"
+      "already_configured": "Integrazione già configurata."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Modifica impostazioni scraping PUN",
+        "title": "Edit PUN scraping settings",
         "data": {
-          "scan_interval": "Intervallo di scansione (secondi)",
-          "scan_hour": "Ora inizio scansione (0-23)",
-          "actual_data_only": "Usa solo dati reali ad inizio mese"
+          "scan_interval": "Scan interval (seconds)",
+          "scan_hour": "Scan start hour (0-23)",
+          "actual_data_only": "Use only real data at month start"
         }
       }
     }
