@@ -6,18 +6,14 @@ import zipfile, io
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree as et
 
-import voluptuous as vol
-
 from aiohttp import ClientSession
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
-import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
-from homeassistant.helpers.discovery import async_load_platform
 
 from .const import (
     DOMAIN,
@@ -58,7 +54,6 @@ async def async_unload_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     """Rimozione dell'integrazione da Home Assistant"""
     
     # Scarica i sensori (disabilitando di conseguenza il coordinator)
-    _LOGGER.info('async_unload_entry')
     unload_ok = await hass.config_entries.async_unload_platforms(config, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(config.entry_id)
@@ -126,8 +121,6 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Aggiornamento dati a intervalli prestabiliti"""
 
-        _LOGGER.debug('Solo dati reali? ## %s ##', self.actual_data_only)
-
         # Ottiene l'ora corrente
         ora_corrente = datetime.now().hour
         if ora_corrente != self.ora_precedente:
@@ -153,8 +146,6 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # a meno che CONF_ACTUAL_DATA_ONLY non sia impostato
         if (not self.actual_data_only) and (date_end.day < 4):
             date_start = date_start - timedelta(days=3)
-
-        return # TODO: REMOVE
 
         # URL del sito Mercato elettrico
         LOGIN_URL = 'https://www.mercatoelettrico.org/It/Tools/Accessodati.aspx?ReturnUrl=%2fIt%2fdownload%2fDownloadDati.aspx%3fval%3dMGP_Prezzi&val=MGP_Prezzi'

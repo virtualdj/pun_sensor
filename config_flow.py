@@ -10,9 +10,6 @@ from .const import (
     CONF_ACTUAL_DATA_ONLY,
 )
 
-import logging
-_LOGGER = logging.getLogger(__name__)
-
 class PUNOptionsFlow(config_entries.OptionsFlow):
     """Opzioni per prezzi PUN (= riconfigurazione successiva)"""
 
