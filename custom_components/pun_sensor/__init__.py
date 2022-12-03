@@ -39,11 +39,19 @@ PLATFORMS: list[str] = ["sensor"]
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     """Impostazione dell'integrazione da configurazione Home Assistant"""
     # Salva il coordinator nella configurazione
-    hass.data.setdefault(DOMAIN, {})[config.entry_id] = PUNDataUpdateCoordinator(hass, config.data)
+    coordinator = PUNDataUpdateCoordinator(hass, config.data)
+    hass.data.setdefault(DOMAIN, {})[config.entry_id] = coordinator
 
     # Crea i sensori con la configurazione specificata
     _LOGGER.info('async_setup_entry -> ' + str(config.data[CONF_SCAN_HOUR]))
+    _LOGGER.info('###### setup_options = ' + str(config.options.get(CONF_ACTUAL_DATA_ONLY, 'default')))
     hass.config_entries.async_setup_platforms(config, PLATFORMS)
+
+    # Registra il callback di modifica opzioni
+    config.async_on_unload(config.add_update_listener(update_listener))
+
+    # Attende il primo refresh
+    await coordinator.async_config_entry_first_refresh()
     return True
 
 
@@ -56,6 +64,30 @@ async def async_unload_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(config.entry_id)
 
     return unload_ok
+
+async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
+    """Modificate le opzioni da Home Assistant"""
+
+    # Recupera il coordinator
+    coordinator = hass.data[DOMAIN][config.entry_id]
+
+    # Aggiorna le impostazioni del coordinator dalle opzioni
+    if config.options[CONF_SCAN_HOUR] != coordinator.scan_hour:
+        # Aggiorna l'ora di scansione
+        coordinator.scan_hour = config.options[CONF_SCAN_HOUR]
+
+        # Imposta la data della prossima esecuzione (all'ora definita di domani)
+        coordinator.next_update = (datetime.today() + timedelta(days=1)).replace(hour=coordinator.scan_hour,
+                                    minute=0, second=0, microsecond=0)
+        _LOGGER.debug('Prossimo aggiornamento web: ' + coordinator.next_update.strftime('%d/%m/%Y %H:%M:%S'))
+
+    if config.options[CONF_ACTUAL_DATA_ONLY] != coordinator.actual_data_only:
+        coordinator.actual_data_only = config.options[CONF_ACTUAL_DATA_ONLY]
+        _LOGGER.debug('Nuovo valore \'usa dati reali\': %s.', coordinator.actual_data_only)
+
+    if config.options[CONF_SCAN_INTERVAL] != coordinator.update_interval.total_seconds():
+        coordinator.update_interval=timedelta(seconds=config.options[CONF_SCAN_INTERVAL])
+        _LOGGER.debug('Coordinator modificato per l\'esecuzione ogni %d secondi.', coordinator.update_interval.total_seconds())
 
 class PUNDataUpdateCoordinator(DataUpdateCoordinator):
     session: ClientSession
@@ -74,19 +106,29 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # Salva la sessione client e la configurazione
         self.session = async_get_clientsession(hass)
-        self.config = config
 
-        # Inizializza i valori
+        # Inizializza i valori di configurazione
+        self.config = config
+        self.actual_data_only = self.config[CONF_ACTUAL_DATA_ONLY]
+        self.scan_hour = self.config[CONF_SCAN_HOUR]
+
+        # Inizializza i valori di default
         self.next_update = datetime.min
         self.pun = [0.0, 0.0, 0.0, 0.0]
         self.orari = [0, 0, 0, 0]
         self.fascia_corrente = None
         self.ora_precedente = 25
         self.giorno_festivo = None
-        _LOGGER.debug('Coordinator inizializzato per l\'esecuzione ogni %s secondi.', config[CONF_SCAN_INTERVAL])
+        _LOGGER.debug('Coordinator inizializzato per l\'esecuzione ogni %d secondi.', self.update_interval.total_seconds())
   
+    def config(self, config: ConfigEntry) -> None:
+        _LOGGER.info('###### Config update?')   
+
+
     async def _async_update_data(self):
         """Aggiornamento dati a intervalli prestabiliti"""
+
+        _LOGGER.debug('Solo dati reali? ## %s ##', self.actual_data_only)
 
         # Ottiene l'ora corrente
         ora_corrente = datetime.now().hour
@@ -97,7 +139,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                 self.giorno_festivo = date.today() in holidays.IT()
 
             # Aggiorna la fascia corrente
-            self.fascia_corrente = get_fascia(date.today(), self.giorno_festivo, ora_corrente)      
+            self.fascia_corrente = get_fascia(date.today(), self.giorno_festivo, ora_corrente)
             self.ora_precedente = ora_corrente
 
         # Verifica che sia arrivata l'ora del prossimo controllo
@@ -111,8 +153,10 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # All'inizio del mese, aggiunge i valori del mese precedente
         # a meno che CONF_ACTUAL_DATA_ONLY non sia impostato
-        if (not self.config[CONF_ACTUAL_DATA_ONLY]) and (date_end.day < 4):
+        if (not self.actual_data_only) and (date_end.day < 4):
             date_start = date_start - timedelta(days=3)
+
+        return # TODO: REMOVE
 
         # URL del sito Mercato elettrico
         LOGIN_URL = 'https://www.mercatoelettrico.org/It/Tools/Accessodati.aspx?ReturnUrl=%2fIt%2fdownload%2fDownloadDati.aspx%3fval%3dMGP_Prezzi&val=MGP_Prezzi'
@@ -221,7 +265,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.pun[PUN_FASCIA_F3] = mean(f3)
 
         # Imposta la data della prossima esecuzione (all'ora definita di domani)
-        self.next_update = (datetime.today() + timedelta(days=1)).replace(hour=self.config[CONF_SCAN_HOUR], 
+        self.next_update = (datetime.today() + timedelta(days=1)).replace(hour=self.scan_hour,
                                         minute=0, second=0, microsecond=0)
         
         # Logga i dati
