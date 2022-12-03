@@ -68,7 +68,6 @@ class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             # Validate user input
             if user_input[CONF_SCAN_HOUR] > 10:
                 # See next section on create entry usage
-                _LOGGER.info('Writing config -> ' + str(user_input))
                 return self.async_create_entry(
                     title="PUN",
                     data=user_input
