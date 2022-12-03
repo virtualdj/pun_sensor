@@ -48,8 +48,6 @@ class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # Versione della configurazione (per utilizzi futuri)
     VERSION = 1
 
-    # TODO: Non deve essere eseguita più volte!
-
     @staticmethod
     @callback
     def async_get_options_flow(entry: config_entries.ConfigEntry) -> PUNOptionsFlow:
@@ -58,6 +56,10 @@ class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         """Gestione prima configurazione da Home Assistant"""
+        # Controlla che l'integrazione non venga eseguita più volte
+        await self.async_set_unique_id('PUN')
+        self._abort_if_unique_id_configured()
+
         errors = {}
         if user_input is not None:
             # Configurazione valida (validazione integrata nello schema)
