@@ -27,7 +27,6 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry,
     """Inizializza e crea i sensori"""
 
     # Restituisce il coordinator
-    _LOGGER.info('async_setup_entry in sensor.py')
     coordinator = hass.data[DOMAIN][config.entry_id]
 
     # Aggiunge i sensori (legati al coordinator)
