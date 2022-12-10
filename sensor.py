@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from typing import Any, Dict
 
 from . import PUNDataUpdateCoordinator
 from .const import (
@@ -17,6 +18,7 @@ from .const import (
     PUN_FASCIA_F2,
     PUN_FASCIA_F3,
 )
+ATTR_ROUNDED_DECIMALS = "rounded_decimals"
 
 import logging
 _LOGGER = logging.getLogger(__name__)
@@ -110,6 +112,14 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
             return "PUN mono-orario"
         else:
             return None
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        """Restituisce gli attributi di stato"""
+        state_attr = {
+            ATTR_ROUNDED_DECIMALS: round(self.native_value, 3)
+        }
+        return state_attr
 
 class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
     """Sensore che rappresenta la fascia PUN corrente"""
@@ -206,3 +216,11 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity):
     def name(self) -> str:
         """Restituisce il nome del sensore"""
         return "Prezzo fascia corrente"
+
+    @property
+    def extra_state_attributes(self) -> Dict[str, Any]:
+        """Restituisce gli attributi di stato"""
+        state_attr = {
+            ATTR_ROUNDED_DECIMALS: round(self.native_value, 3)
+        }
+        return state_attr
