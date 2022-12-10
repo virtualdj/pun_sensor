@@ -14,6 +14,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+import homeassistant.util.dt as dt_util
 
 from .const import (
     DOMAIN,
@@ -72,16 +73,16 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
         coordinator.scan_hour = config.options[CONF_SCAN_HOUR]
 
         # Calcola la data della prossima esecuzione (all'ora definita)
-        coordinator.next_update = datetime.today().replace(hour=coordinator.scan_hour,
+        coordinator.next_update = dt_util.now().replace(hour=coordinator.scan_hour,
                                     minute=0, second=0, microsecond=0)
-        if coordinator.next_update <= datetime.today():
+        if coordinator.next_update <= dt_util.now():
             # Se l'evento è già trascorso la esegue domani alla stessa ora
             coordinator.next_update = coordinator.next_update + timedelta(days=1)
         _LOGGER.debug('Prossimo aggiornamento web: ' + coordinator.next_update.strftime('%d/%m/%Y %H:%M:%S'))
 
     if config.options[CONF_ACTUAL_DATA_ONLY] != coordinator.actual_data_only:
         coordinator.actual_data_only = config.options[CONF_ACTUAL_DATA_ONLY]
-        coordinator.next_update = datetime.min
+        coordinator.next_update = datetime.min.replace(tzinfo=dt_util.UTC)
         _LOGGER.debug('Nuovo valore \'usa dati reali\': %s.', coordinator.actual_data_only)
 
     if config.options[CONF_SCAN_INTERVAL] != coordinator.update_interval.total_seconds():
@@ -111,7 +112,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.scan_hour = config.options.get(CONF_SCAN_HOUR, config.data[CONF_SCAN_HOUR])
 
         # Inizializza i valori di default
-        self.next_update = datetime.min
+        self.next_update = datetime.min.replace(tzinfo=dt_util.UTC)
         self.pun = [0.0, 0.0, 0.0, 0.0]
         self.orari = [0, 0, 0, 0]
         self.fascia_corrente = None
@@ -122,8 +123,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Aggiornamento dati a intervalli prestabiliti"""
 
-        # Ottiene l'ora corrente
-        ora_corrente = datetime.now().hour
+        # Ottiene l'ora corrente (fuso orario scelto in Home Assistant)
+        ora_corrente = dt_util.now().hour
         if ora_corrente != self.ora_precedente:
             # E' cambiata l'ora, potrebbe essere cambiata la fascia
             if ora_corrente < self.ora_precedente:
@@ -135,7 +136,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.ora_precedente = ora_corrente
 
         # Verifica che sia arrivata l'ora del prossimo controllo
-        if (self.next_update > datetime.now()):
+        if (self.next_update > dt_util.now()):
             _LOGGER.debug('Aggiornamento dati web non necessario (già eseguito).')
             return
         
@@ -255,7 +256,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.pun[PUN_FASCIA_F3] = mean(f3)
 
         # Imposta la data della prossima esecuzione (all'ora definita di domani)
-        self.next_update = (datetime.today() + timedelta(days=1)).replace(hour=self.scan_hour,
+        self.next_update = (dt_util.now() + timedelta(days=1)).replace(hour=self.scan_hour,
                                         minute=0, second=0, microsecond=0)
         
         # Logga i dati
