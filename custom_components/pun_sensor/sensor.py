@@ -123,7 +123,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Restituisce gli attributi di stato"""
         state_attr = {
-            ATTR_ROUNDED_DECIMALS: round(self.native_value, 3)
+            ATTR_ROUNDED_DECIMALS: str(round(self.native_value, 3))
         }
         return state_attr
 
@@ -236,6 +236,6 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity):
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Restituisce gli attributi di stato"""
         state_attr = {
-            ATTR_ROUNDED_DECIMALS: round(self.native_value, 3)
+            ATTR_ROUNDED_DECIMALS: str(round(self.native_value, 3))
         }
         return state_attr
