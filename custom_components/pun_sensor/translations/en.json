@@ -4,7 +4,6 @@
       "user": {
         "title": "PUN scraping settings",
         "data": {
-          "scan_interval": "Slots scan interval (seconds)",
           "scan_hour": "Web download start hour (0-23)",
           "actual_data_only": "Use only real data at month start"
         }
@@ -22,7 +21,6 @@
       "init": {
         "title": "Edit PUN scraping settings",
         "data": {
-          "scan_interval": "Slots scan interval (seconds)",
           "scan_hour": "Web download start hour (0-23)",
           "actual_data_only": "Use only real data at month start"
         }

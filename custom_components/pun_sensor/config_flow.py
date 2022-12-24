@@ -5,7 +5,6 @@ import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
 from .const import (
     DOMAIN,
-    CONF_SCAN_INTERVAL,
     CONF_SCAN_HOUR,
     CONF_ACTUAL_DATA_ONLY,
 )
@@ -30,7 +29,6 @@ class PUNOptionsFlow(config_entries.OptionsFlow):
         # Schema dati di opzione (con default sui valori attuali)
         data_schema = {
             vol.Required(CONF_SCAN_HOUR, default=self.config_entry.options.get(CONF_SCAN_HOUR, self.config_entry.data[CONF_SCAN_HOUR])): vol.All(cv.positive_int, vol.Range(min=0, max=23)),
-            vol.Optional(CONF_SCAN_INTERVAL, default=self.config_entry.options.get(CONF_SCAN_INTERVAL, self.config_entry.data[CONF_SCAN_INTERVAL])): vol.All(cv.positive_int, vol.Range(min=10)),
             vol.Optional(CONF_ACTUAL_DATA_ONLY, default=self.config_entry.options.get(CONF_ACTUAL_DATA_ONLY, self.config_entry.data[CONF_ACTUAL_DATA_ONLY])): cv.boolean,
         }
 
@@ -68,7 +66,6 @@ class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Schema dati di configurazione (con default fissi)
         data_schema = {
             vol.Required(CONF_SCAN_HOUR, default=1): vol.All(cv.positive_int, vol.Range(min=0, max=23)),
-            vol.Optional(CONF_SCAN_INTERVAL, default=10): vol.All(cv.positive_int, vol.Range(min=10)),
             vol.Optional(CONF_ACTUAL_DATA_ONLY, default=False): cv.boolean,
         }
 
