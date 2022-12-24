@@ -17,6 +17,9 @@ from .const import (
     PUN_FASCIA_F1,
     PUN_FASCIA_F2,
     PUN_FASCIA_F3,
+    COORD_EVENT,
+    EVENT_UPDATE_FASCIA,
+    EVENT_UPDATE_PUN,
 )
 ATTR_ROUNDED_DECIMALS = "rounded_decimals"
 
@@ -60,6 +63,16 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._available = False
         self._native_value = 0
+
+    def _handle_coordinator_update(self) -> None:
+        """Gestisce l'aggiornamento dei dati dal coordinator"""
+        self.async_write_ha_state()
+        #_LOGGER.debug('SENSOR HANDLE COORDINATOR: PUNSensorEntity (F%s)', self.tipo)
+
+    @property
+    def should_poll(self) -> bool:
+        """Determina l'aggiornamento automatico"""
+        return False
 
     @property
     def available(self) -> bool:
@@ -129,6 +142,16 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
 
         # Inizializza coordinator
         self.coordinator = coordinator
+
+    def _handle_coordinator_update(self) -> None:
+        """Gestisce l'aggiornamento dei dati dal coordinator"""
+        #if (self.coordinator.data and self.coordinator.data[COORD_EVENT] == EVENT_UPDATE_FASCIA):
+        self.async_write_ha_state()
+
+    @property
+    def should_poll(self) -> bool:
+        """Determina l'aggiornamento automatico"""
+        return False
 
     @property
     def available(self) -> bool:

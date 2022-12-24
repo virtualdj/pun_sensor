@@ -5,6 +5,7 @@ from statistics import mean
 import zipfile, io
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree as et
+from typing import Tuple
 
 from aiohttp import ClientSession
 from homeassistant.core import HomeAssistant
@@ -14,7 +15,9 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+from homeassistant.helpers.event import async_track_point_in_time
 import homeassistant.util.dt as dt_util
+import random, asyncio # TODO: REMOVE
 
 from .const import (
     DOMAIN,
@@ -22,9 +25,11 @@ from .const import (
     PUN_FASCIA_F1,
     PUN_FASCIA_F2,
     PUN_FASCIA_F3,
-    CONF_SCAN_INTERVAL,
     CONF_SCAN_HOUR,
     CONF_ACTUAL_DATA_ONLY,
+    COORD_EVENT,
+    EVENT_UPDATE_FASCIA,
+    EVENT_UPDATE_PUN
 )
 
 import logging
@@ -40,6 +45,30 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     coordinator = PUNDataUpdateCoordinator(hass, config)
     hass.data.setdefault(DOMAIN, {})[config.entry_id] = coordinator
 
+    # TODO: Remove function below
+    async def timer(now = None):
+        try:
+            #await hass.async_add_executor_job(timeraction, hass, config)
+            await timeraction(hass, config)
+        finally:
+            async_track_point_in_time(hass, timer, dt_util.utcnow() + timedelta(seconds=15))
+
+    _LOGGER.debug('## Preparing async track point in time')
+
+    # Aggiorna immediatamente la fascia oraria corrente
+    await coordinator.update_fascia()
+
+    # Calcola la data della prossima esecuzione (all'ora definita di domani)
+    next_update_pun = dt_util.now().replace(hour=coordinator.scan_hour,
+                            minute=0, second=0, microsecond=0)
+    if next_update_pun <= dt_util.now():
+            # Se l'evento è già trascorso la esegue domani alla stessa ora
+            next_update_pun = next_update_pun + timedelta(days=1)
+
+    # Schedula la prossima esecuzione dell'aggiornamento PUN
+    async_track_point_in_time(hass, coordinator.update_pun, next_update_pun)
+    _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S'))
+
     # Crea i sensori con la configurazione specificata
     hass.config_entries.async_setup_platforms(config, PLATFORMS)
 
@@ -48,6 +77,15 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
 
     return True
 
+# TODO: Remove function below
+async def timeraction(hass: HomeAssistant, config: ConfigEntry):
+    _LOGGER.debug('## Timer action')
+
+    # Recupera il coordinator
+    coordinator = hass.data[DOMAIN][config.entry_id]
+    await coordinator._async_update_data()
+    coordinator.async_set_updated_data({})
+    
 
 async def async_unload_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     """Rimozione dell'integrazione da Home Assistant"""
@@ -67,25 +105,31 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
 
     # Aggiorna le impostazioni del coordinator dalle opzioni
     if config.options[CONF_SCAN_HOUR] != coordinator.scan_hour:
-        # Aggiorna l'ora di scansione
+        # Modificata l'ora di scansione
         coordinator.scan_hour = config.options[CONF_SCAN_HOUR]
 
         # Calcola la data della prossima esecuzione (all'ora definita)
-        coordinator.next_update = dt_util.now().replace(hour=coordinator.scan_hour,
-                                    minute=0, second=0, microsecond=0)
-        if coordinator.next_update <= dt_util.now():
-            # Se l'evento è già trascorso la esegue domani alla stessa ora
-            coordinator.next_update = coordinator.next_update + timedelta(days=1)
-        _LOGGER.debug('Prossimo aggiornamento web: ' + coordinator.next_update.strftime('%d/%m/%Y %H:%M:%S'))
+        next_update_pun = dt_util.now().replace(hour=coordinator.scan_hour,
+                                minute=0, second=0, microsecond=0)
+        if next_update_pun.hour < dt_util.now().hour:
+            # Se l'ora impostata è minore della corrente, schedula a domani
+            # (perciò se è uguale esegue subito l'aggiornamento)
+            next_update_pun = next_update_pun + timedelta(days=1)
+
+        # Schedula la prossima esecuzione
+        coordinator.web_retries = 0
+        async_track_point_in_time(coordinator.hass, coordinator.update_pun, next_update_pun)
+        _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S'))
 
     if config.options[CONF_ACTUAL_DATA_ONLY] != coordinator.actual_data_only:
+        # Modificata impostazione 'Usa dati reali'
         coordinator.actual_data_only = config.options[CONF_ACTUAL_DATA_ONLY]
-        coordinator.next_update = datetime.min.replace(tzinfo=dt_util.UTC)
         _LOGGER.debug('Nuovo valore \'usa dati reali\': %s.', coordinator.actual_data_only)
 
-    if config.options[CONF_SCAN_INTERVAL] != coordinator.update_interval.total_seconds():
-        coordinator.update_interval=timedelta(seconds=config.options[CONF_SCAN_INTERVAL])
-        _LOGGER.debug('Coordinator modificato per l\'esecuzione ogni %d secondi.', coordinator.update_interval.total_seconds())
+        # Forza un nuovo aggiornamento immediato
+        coordinator.web_retries = 0
+        await coordinator.update_pun()
+
 
 class PUNDataUpdateCoordinator(DataUpdateCoordinator):
     session: ClientSession
@@ -97,9 +141,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER,
             # Nome dei dati (a fini di log)
             name = DOMAIN,
-
-            # Intervallo di aggiornamento
-            update_interval=timedelta(seconds=config.options.get(CONF_SCAN_INTERVAL, config.data[CONF_SCAN_INTERVAL]))
+            # Nessun update_interval (aggiornamento automatico disattivato)
         )
 
         # Salva la sessione client e la configurazione
@@ -110,37 +152,37 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.scan_hour = config.options.get(CONF_SCAN_HOUR, config.data[CONF_SCAN_HOUR])
 
         # Inizializza i valori di default
-        self.next_update = datetime.min.replace(tzinfo=dt_util.UTC)
+        self.web_retries = 0
+        self.web_last_run = datetime.min.replace(tzinfo=dt_util.UTC)
         self.pun = [0.0, 0.0, 0.0, 0.0]
         self.orari = [0, 0, 0, 0]
         self.fascia_corrente = None
-        self.ora_precedente = 25
-        self.giorno_festivo = None
-        _LOGGER.debug('Coordinator inizializzato per l\'esecuzione ogni %d secondi (con \'usa dati reali\' = %s).', self.update_interval.total_seconds(), self.actual_data_only)
+        _LOGGER.debug('Coordinator inizializzato (con \'usa dati reali\' = %s).', self.actual_data_only)
 
     async def _async_update_data(self):
         """Aggiornamento dati a intervalli prestabiliti"""
-
-        # Ottiene l'ora corrente (fuso orario scelto in Home Assistant)
-        ora_corrente = dt_util.now().hour
-        if ora_corrente != self.ora_precedente:
-            # E' cambiata l'ora, potrebbe essere cambiata la fascia
-            if ora_corrente < self.ora_precedente:
-                # E' cambiato anche il giorno
-                self.giorno_festivo = date.today() in holidays.IT()
-
-            # Aggiorna la fascia corrente
-            self.fascia_corrente = get_fascia(date.today(), self.giorno_festivo, ora_corrente)
-            self.ora_precedente = ora_corrente
-
-        # Verifica che sia arrivata l'ora del prossimo controllo
-        if (self.next_update > dt_util.now()):
-            _LOGGER.debug('Aggiornamento dati web non necessario (già eseguito).')
-            return
         
         # Calcola l'intervallo di date per il mese corrente
-        date_end = date.today()
+        date_end = dt_util.now().date()
         date_start = date(date_end.year, date_end.month, 1)
+
+        # _LOGGER.debug('§§ WEB UPDATE §§')
+        # await asyncio.sleep(3) # TODO: Begin Remove
+        # self.orari[PUN_FASCIA_MONO] = random.randint(0, 5)
+        # self.orari[PUN_FASCIA_F1] = random.randint(0, 5)
+        # self.orari[PUN_FASCIA_F2] = random.randint(0, 5)
+        # self.orari[PUN_FASCIA_F3] = random.randint(0, 5)
+        # if self.orari[PUN_FASCIA_MONO] > 0:
+        #     self.pun[PUN_FASCIA_MONO] = random.randrange(100, 500) / 1000
+        # if self.orari[PUN_FASCIA_F1] > 0:
+        #     self.pun[PUN_FASCIA_F1] = random.randrange(100, 500) / 1000
+        # if self.orari[PUN_FASCIA_F2] > 0:
+        #     self.pun[PUN_FASCIA_F2] = random.randrange(100, 500) / 1000
+        # if self.orari[PUN_FASCIA_F3] > 0:
+        #     self.pun[PUN_FASCIA_F3] = random.randrange(100, 500) / 1000
+        # if random.randint(0, 1) == 1:
+        #     raise AssertionError
+        # return #TODO: End Remove
 
         # All'inizio del mese, aggiunge i valori del mese precedente
         # a meno che CONF_ACTUAL_DATA_ONLY non sia impostato
@@ -228,7 +270,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                 prezzo = float(prezzo_string) / 1000
 
                 # Estrae la fascia oraria
-                fascia = get_fascia(dat_date, festivo, ora)
+                fascia = get_fascia_for_xml(dat_date, festivo, ora)
 
                 # Calcola le statistiche
                 mono.append(prezzo)
@@ -252,19 +294,106 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.pun[PUN_FASCIA_F2] = mean(f2)
         if self.orari[PUN_FASCIA_F3] > 0:
             self.pun[PUN_FASCIA_F3] = mean(f3)
-
-        # Imposta la data della prossima esecuzione (all'ora definita di domani)
-        self.next_update = (dt_util.now() + timedelta(days=1)).replace(hour=self.scan_hour,
-                                        minute=0, second=0, microsecond=0)
-        
+       
         # Logga i dati
         _LOGGER.debug('Numero di dati: ' + ', '.join(str(i) for i in self.orari))
         _LOGGER.debug('Valori PUN: ' + ', '.join(str(f) for f in self.pun))
-        _LOGGER.debug('Prossimo aggiornamento web: ' + self.next_update.strftime('%d/%m/%Y %H:%M:%S'))
         return
 
-def get_fascia(data, festivo, ora):
-    """Restituisce il numero di fascia oraria"""
+    async def update_fascia(self, now=None):
+        """Aggiorna la fascia oraria corrente"""
+
+        # Ottiene la fascia oraria corrente e il prossimo aggiornamento
+        self.fascia_corrente, next_update_fascia = get_fascia(dt_util.now())
+        _LOGGER.info('Nuova fascia corrente: F%s (prossima: %s)', self.fascia_corrente, next_update_fascia.strftime('%a %d/%m/%Y %H:%M:%S'))
+
+        # Notifica che i dati sono stati aggiornati (fascia)
+        self.async_set_updated_data({ COORD_EVENT: EVENT_UPDATE_FASCIA })
+
+        # Schedula la prossima esecuzione
+        async_track_point_in_time(self.hass, self.update_fascia, next_update_fascia)
+
+    async def update_pun(self, now=None):
+        """Aggiorna i prezzi PUN da Internet (funziona solo se schedulata)"""
+
+        # Evita rientranze nella funzione
+        if ((dt_util.now() - self.web_last_run).total_seconds() < 2):
+            _LOGGER.debug('## RE-ENTER ##')
+            return
+        self.web_last_run = dt_util.now()
+
+        # Verifica che non sia un nuovo tentativo dopo un errore
+        if (self.web_retries == 0):
+            # Verifica l'orario di esecuzione
+            if (now is not None):
+                if (now.date() != dt_util.now().date()):
+                    # Esecuzione alla data non corretta (vecchia schedulazione)
+                    _LOGGER.debug('Aggiornamento web ignorato a causa della data di schedulazione non corretta (%s).', now)
+                    return
+                elif (now.hour != self.scan_hour):
+                    # Esecuzione all'ora non corretta (vecchia schedulazione)
+                    _LOGGER.debug('Aggiornamento web ignorato a causa dell\'ora di schedulazione non corretta (%s != %s).', now.hour, self.scan_hour)
+                    return
+            elif (now is None):
+                # Esecuzione non schedulata
+                _LOGGER.debug('Esecuzione aggiornamento web non schedulato.')
+
+        # Aggiorna i dati da web
+        try:
+            # Esegue l'aggiornamento
+            await self._async_update_data()
+
+            # Se non ci sono eccezioni, ha avuto successo
+            self.web_retries = 0
+        except:
+            # Errori durante l'esecuzione dell'aggiornamento, riprova dopo
+            if (self.web_retries == 0):
+                # Primo errore
+                self.web_retries = 4
+                retry_in_minutes = 10
+            elif (self.web_retries == 1):
+                # Ultimo errore, tentativi esauriti
+                self.web_retries = 0
+
+                # Schedula al giorno dopo
+                retry_in_minutes = 0
+            else:
+                # Ulteriori errori (4, 3, 2)
+                self.web_retries -= 1
+                retry_in_minutes = 60 * (4 - self.web_retries)
+            
+            # Prepara la schedulazione
+            if (retry_in_minutes > 0):
+                # Minuti dopo
+                _LOGGER.warn('Errore durante l\'aggionamento via web, nuovo tentativo in %s minuti.', retry_in_minutes)
+                next_update_pun = dt_util.utcnow() + timedelta(seconds=retry_in_minutes) # TODO: seconds > minutes
+            else:
+                # Giorno dopo
+                _LOGGER.warn('Errore durante l\'aggionamento via web, tentativi esauriti.')
+                next_update_pun = dt_util.now().replace(hour=self.scan_hour,
+                                minute=0, second=0, microsecond=0) + timedelta(days=1)
+                _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S'))
+            
+            # Schedula ed esce
+            async_track_point_in_time(self.hass, self.update_pun, next_update_pun)
+            return
+
+        # Notifica che i dati PUN sono stati aggiornati con successo
+        self.async_set_updated_data({ COORD_EVENT: EVENT_UPDATE_PUN })
+
+        # Calcola la data della prossima esecuzione
+        next_update_pun = dt_util.now().replace(hour=self.scan_hour,
+                                minute=0, second=0, microsecond=0)
+        if next_update_pun <= dt_util.now():
+            # Se l'evento è già trascorso la esegue domani alla stessa ora
+            next_update_pun = next_update_pun + timedelta(days=1)
+
+        # Schedula la prossima esecuzione
+        async_track_point_in_time(self.hass, self.update_pun, next_update_pun)
+        _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S'))
+
+def get_fascia_for_xml(data, festivo, ora) -> int:
+    """Restituisce il numero di fascia oraria di un determinato giorno/ora"""
     #F1 = lu-ve 8-19
     #F2 = lu-ve 7-8, lu-ve 19-23, sa 7-23
     #F3 = lu-sa 0-7, lu-sa 23-24, do, festivi
@@ -284,3 +413,82 @@ def get_fascia(data, festivo, ora):
         elif (ora == 23) or ((ora >= 0) and (ora < 7)):
             return 3
     return 1
+
+def get_fascia(dataora: datetime) -> Tuple[int, datetime]:
+    """Restituisce la fascia della data/ora indicata (o quella corrente) e la data del prossimo cambiamento"""
+
+    # Verifica se la data corrente è un giorno con festività
+    festivo = dataora in holidays.IT()
+    
+    # Identifica la fascia corrente
+    # F1 = lu-ve 8-19
+    # F2 = lu-ve 7-8, lu-ve 19-23, sa 7-23
+    # F3 = lu-sa 0-7, lu-sa 23-24, do, festivi
+    if festivo or (dataora.weekday() == 6):
+        # Festivi e domeniche
+        fascia = 3
+
+        # Prossima fascia: alle 7 di un giorno non domenica o festività
+        prossima = (dataora + timedelta(days=1)).replace(hour=7,
+                        minute=0, second=0, microsecond=0)
+        while ((prossima in holidays.IT()) or (prossima.weekday() == 6)):
+            prossima += timedelta(days=1)
+
+    elif (dataora.weekday() == 5):
+        # Sabato
+        if (dataora.hour >= 7) and (dataora.hour < 23):
+            # Sabato dalle 7 alle 23
+            fascia = 2
+
+            # Prossima fascia: alle 23 dello stesso giorno
+            prossima = dataora.replace(hour=23,
+                            minute=0, second=0, microsecond=0)
+        else:
+            # Sabato dopo le 23
+            fascia = 3
+
+            # Prossima fascia: alle 7 di un giorno non domenica o festività
+            prossima = (dataora + timedelta(days=1)).replace(hour=7,
+                        minute=0, second=0, microsecond=0)
+            while ((prossima in holidays.IT()) or (prossima.weekday() == 6)):
+                prossima += timedelta(days=1)
+    else:
+        # Altri giorni della settimana
+        if (dataora.hour == 7):
+            # Lunedì-venerdì dalle 7 alle 8
+            fascia = 2
+
+            # Prossima fascia: alle 8 dello stesso giorno
+            prossima = dataora.replace(hour=8,
+                            minute=0, second=0, microsecond=0)
+
+        elif ((dataora.hour >= 19) and (dataora.hour < 23)):
+            # Lunedì-venerdì dalle 19 alle 23
+            fascia = 2
+
+            # Prossima fascia: alle 23 dello stesso giorno
+            prossima = dataora.replace(hour=23,
+                            minute=0, second=0, microsecond=0)
+
+        elif ((dataora.hour == 23) or ((dataora.hour >= 0) and (dataora.hour < 7))):
+            # Lunedì-venerdì dalle 23 alle 24 e dalle 0 alle 7
+            fascia = 3
+
+            # Prossima fascia: alle 7 di un giorno non domenica o festività
+            prossima = (dataora + timedelta(days=1)).replace(hour=7,
+                        minute=0, second=0, microsecond=0)
+            while ((prossima in holidays.IT()) or (prossima.weekday() == 6)):
+                prossima += timedelta(days=1)
+
+        else:
+            # Lunedì-venerdì dalle 8 alle 19
+            fascia = 1
+
+            # Prossima fascia: alle 19 dello stesso giorno
+            prossima = dataora.replace(hour=19,
+                            minute=0, second=0, microsecond=0)
+    
+    # Restituisce i risultati
+    fascia = random.randint(1, 3) # TODO: REMOVE
+    prossima = dataora + timedelta(seconds=60) # TODO: REMOVE
+    return fascia, prossima
