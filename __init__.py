@@ -17,7 +17,6 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.helpers.event import async_track_point_in_time
 import homeassistant.util.dt as dt_util
-import random, asyncio # TODO: REMOVE
 
 from .const import (
     DOMAIN,
@@ -45,16 +44,6 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     coordinator = PUNDataUpdateCoordinator(hass, config)
     hass.data.setdefault(DOMAIN, {})[config.entry_id] = coordinator
 
-    # TODO: Remove function below
-    async def timer(now = None):
-        try:
-            #await hass.async_add_executor_job(timeraction, hass, config)
-            await timeraction(hass, config)
-        finally:
-            async_track_point_in_time(hass, timer, dt_util.utcnow() + timedelta(seconds=15))
-
-    _LOGGER.debug('## Preparing async track point in time')
-
     # Aggiorna immediatamente la fascia oraria corrente
     await coordinator.update_fascia()
 
@@ -74,18 +63,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
 
     # Registra il callback di modifica opzioni
     config.async_on_unload(config.add_update_listener(update_listener))
-
     return True
-
-# TODO: Remove function below
-async def timeraction(hass: HomeAssistant, config: ConfigEntry):
-    _LOGGER.debug('## Timer action')
-
-    # Recupera il coordinator
-    coordinator = hass.data[DOMAIN][config.entry_id]
-    await coordinator._async_update_data()
-    coordinator.async_set_updated_data({})
-    
 
 async def async_unload_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     """Rimozione dell'integrazione da Home Assistant"""
@@ -165,24 +143,6 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Calcola l'intervallo di date per il mese corrente
         date_end = dt_util.now().date()
         date_start = date(date_end.year, date_end.month, 1)
-
-        # _LOGGER.debug('§§ WEB UPDATE §§')
-        # await asyncio.sleep(3) # TODO: Begin Remove
-        # self.orari[PUN_FASCIA_MONO] = random.randint(0, 5)
-        # self.orari[PUN_FASCIA_F1] = random.randint(0, 5)
-        # self.orari[PUN_FASCIA_F2] = random.randint(0, 5)
-        # self.orari[PUN_FASCIA_F3] = random.randint(0, 5)
-        # if self.orari[PUN_FASCIA_MONO] > 0:
-        #     self.pun[PUN_FASCIA_MONO] = random.randrange(100, 500) / 1000
-        # if self.orari[PUN_FASCIA_F1] > 0:
-        #     self.pun[PUN_FASCIA_F1] = random.randrange(100, 500) / 1000
-        # if self.orari[PUN_FASCIA_F2] > 0:
-        #     self.pun[PUN_FASCIA_F2] = random.randrange(100, 500) / 1000
-        # if self.orari[PUN_FASCIA_F3] > 0:
-        #     self.pun[PUN_FASCIA_F3] = random.randrange(100, 500) / 1000
-        # if random.randint(0, 1) == 1:
-        #     raise AssertionError
-        # return #TODO: End Remove
 
         # All'inizio del mese, aggiunge i valori del mese precedente
         # a meno che CONF_ACTUAL_DATA_ONLY non sia impostato
@@ -318,7 +278,6 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # Evita rientranze nella funzione
         if ((dt_util.now() - self.web_last_run).total_seconds() < 2):
-            _LOGGER.debug('## RE-ENTER ##')
             return
         self.web_last_run = dt_util.now()
 
@@ -366,7 +325,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             if (retry_in_minutes > 0):
                 # Minuti dopo
                 _LOGGER.warn('Errore durante l\'aggionamento via web, nuovo tentativo in %s minuti.', retry_in_minutes)
-                next_update_pun = dt_util.utcnow() + timedelta(seconds=retry_in_minutes) # TODO: seconds > minutes
+                next_update_pun = dt_util.utcnow() + timedelta(minutes=retry_in_minutes)
             else:
                 # Giorno dopo
                 _LOGGER.warn('Errore durante l\'aggionamento via web, tentativi esauriti.')
@@ -488,7 +447,4 @@ def get_fascia(dataora: datetime) -> Tuple[int, datetime]:
             prossima = dataora.replace(hour=19,
                             minute=0, second=0, microsecond=0)
     
-    # Restituisce i risultati
-    fascia = random.randint(1, 3) # TODO: REMOVE
-    prossima = dataora + timedelta(seconds=60) # TODO: REMOVE
     return fascia, prossima
