@@ -27,3 +27,18 @@ Se la casella di controllo _Usa solo dati reali ad inizio mese_ è **attivata** 
 ![Screenshot integrazione](screenshots_main.png "Dati visualizzati")
 
 L'integrazione fornisce il nome della fascia corrente relativa all'orario di Home Assistant (tra F1 / F2 / F3), i prezzi delle tre fascie F1 / F2 / F3 più la fascia mono-oraria e il prezzo della fascia corrente.
+
+## Note di sviluppo
+
+Questo è la mia prima esperienza con le integrazioni di Home Assistant e, in generale, con Python. Purtroppo, mio malgrado, ho scoperto che la documentazione di Home Assistant per quanto riguarda la creazione di nuove integrazioni è **scarsa e incompleta**.
+
+Nella prima versione [d239dae](https://github.com/virtualdj/pun_sensor/commit/d239dae713ae2d06e0e80f8625eab84dc3bb4e02) ho provato ad effettuare un polling sia aggiornare i prezzi che per calcolare la fascia oraria corrente, ma specie per il calcolo della fascia non era il metodo corretto perché non è detto che l'aggiornamento avvenisse al secondo 0 della nuova fascia. Così, cercando altri sorgenti in giro su GitHub, ho scoperto che esiste una funzione in Home Assistant chiamata `async_track_point_in_time` che consente di schedulare l'esecuzione di una routine in un determinato istante nel tempo, che viene rispettato. La versione successiva è stata quindi riscritta utilizzando questo metodo (più efficiente).
+
+Ovviamente non ho alcuna certezza che tutto questo sia la maniera giusta di procedere, ma funziona! Per chi di interesse, questi sono i progetti da cui ho tratto del codice interessante da utilizzare per questo progetto:
+- [zaubererty/homeassistant-mvpv](https://github.com/zaubererty/homeassistant-mvpv/blob/d124543a36ab90b94b85a2211f41fee5943239ac/custom_components/mypv/coordinator.py)
+- [Gradecak/spaarnelanden-containers](https://github.com/Gradecak/spaarnelanden-containers/blob/39db00072bdd4f99d1cf543fba314d161147259c/custom_components/spaarnelanden/sensor.py)
+- [nintendo_wishlist](https://github.com/custom-components/sensor.nintendo_wishlist/tree/main/custom_components/nintendo_wishlist)
+- [saso5/homeassistant-mojelektro](https://github.com/saso5/homeassistant-mojelektro/tree/d747e74a842be5697494da6403a1055fcb4322bf/custom_components/mojelektro)
+- [YodaDaCoda/hass-solarman-modbus](https://github.com/YodaDaCoda/hass-solarman-modbus/blob/36ebd2d7eef7834867805ae01de433e8f8ab2ddb/custom_components/solarman/config_flow.py)
+- [bruxy70/Garbage-Collection](https://github.com/bruxy70/Garbage-Collection/blob/ae73818b3b0786ebcf72b16a6f27428e516686e6/custom_components/garbage_collection/sensor.py)
+- [dcmeglio/alarmdecoder-hass](https://github.com/dcmeglio/alarmdecoder-hass/blob/a898ae18cc5562b2a5fc3a73511302b6d242fd07/custom_components/alarmdecoder/__init__.py)
