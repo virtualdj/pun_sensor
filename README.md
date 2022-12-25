@@ -30,9 +30,10 @@ L'integrazione fornisce il nome della fascia corrente relativa all'orario di Hom
 
 ## Note di sviluppo
 
-Questo è la mia prima esperienza con le integrazioni di Home Assistant e, in generale, con Python. Purtroppo, mio malgrado, ho scoperto che la documentazione di Home Assistant per quanto riguarda la creazione di nuove integrazioni è **scarsa e incompleta**.
+Questo è la mia prima esperienza con le integrazioni di Home Assistant e, in generale, con Python. Purtroppo, mio malgrado, ho scoperto che la **documentazione di Home Assistant** per quanto riguarda la creazione di nuove integrazioni è **scarsa e incompleta**.
 
-Nella prima versione [d239dae](https://github.com/virtualdj/pun_sensor/commit/d239dae713ae2d06e0e80f8625eab84dc3bb4e02) ho provato ad effettuare un polling sia aggiornare i prezzi che per calcolare la fascia oraria corrente, ma specie per il calcolo della fascia non era il metodo corretto perché non è detto che l'aggiornamento avvenisse al secondo 0 della nuova fascia. Così, cercando altri sorgenti in giro su GitHub, ho scoperto che esiste una funzione in Home Assistant chiamata `async_track_point_in_time` che consente di schedulare l'esecuzione di una routine in un determinato istante nel tempo, che viene rispettato. La versione successiva è stata quindi riscritta utilizzando questo metodo (più efficiente).
+Nella prima versione (commit [d239dae](https://github.com/virtualdj/pun_sensor/commit/d239dae713ae2d06e0e80f8625eab84dc3bb4e02)) ho provato ad effettuare un polling ogni 10 secondi sia per verificare se è sopraggiunto l'orario di aggiornamento dei prezzi che per calcolare la fascia oraria corrente. Ma, specie per il calcolo della fascia, non era il metodo corretto perché non è detto che l'aggiornamento avvenisse al secondo 0 della nuova fascia.
+Così, cercando altri sorgenti in giro su GitHub, ho scoperto che esiste una funzione in Home Assistant chiamata `async_track_point_in_time` che consente di schedulare l'esecuzione di una routine in un determinato istante nel tempo, che viene rispettato perfettamente. La versione successiva è stata quindi riscritta utilizzando questo metodo (più efficiente).
 
 Ovviamente non ho alcuna certezza che tutto questo sia la maniera giusta di procedere, ma funziona! Per chi di interesse, questi sono i progetti da cui ho tratto del codice interessante da utilizzare per questo progetto:
 - [zaubererty/homeassistant-mvpv](https://github.com/zaubererty/homeassistant-mvpv/blob/d124543a36ab90b94b85a2211f41fee5943239ac/custom_components/mypv/coordinator.py)
