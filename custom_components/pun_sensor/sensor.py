@@ -40,8 +40,8 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry,
     
 
 def fmt_float(num: float):
-    """Formatta la media come numero decimale con 6 decimali (ma arrotondato al quinto)"""
-    return format(round(num, 5), '.6f')
+    """Formatta la media come numero decimale con 6 decimali"""
+    return format(round(num, 6), '.6f')
 
 class PUNSensorEntity(CoordinatorEntity, SensorEntity):
     """Sensore PUN relativo al prezzo medio mensile per fasce"""
