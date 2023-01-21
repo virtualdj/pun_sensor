@@ -1,7 +1,8 @@
 
 from homeassistant.components.sensor import (
     SensorEntity,
-    SensorStateClass
+    SensorStateClass,
+    SensorDeviceClass
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
@@ -55,6 +56,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
 
         # Inizializza le proprietà comuni
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_device_class = SensorDeviceClass.MONETARY
         self._available = False
         self._native_value = 0
 
@@ -183,6 +185,10 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity):
     @property
     def state_class(self) -> str:
         return SensorStateClass.MEASUREMENT
+
+    @property
+    def device_class(self) -> str:
+        return SensorDeviceClass.MONETARY
 
     @property
     def available(self) -> bool:
