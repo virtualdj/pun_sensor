@@ -1,5 +1,5 @@
-
 from homeassistant.components.sensor import (
+    ENTITY_ID_FORMAT,
     SensorEntity,
     SensorStateClass,
     SensorDeviceClass
@@ -54,6 +54,20 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
         self.coordinator = coordinator
         self.tipo = tipo
 
+        # ID univoco sensore basato su un nome fisso
+        if (self.tipo == PUN_FASCIA_F3):
+            self.entity_id = ENTITY_ID_FORMAT.format('pun_fascia_f3')
+        elif (self.tipo == PUN_FASCIA_F2):
+            self.entity_id = ENTITY_ID_FORMAT.format('pun_fascia_f2')
+        elif (self.tipo == PUN_FASCIA_F1):
+            self.entity_id = ENTITY_ID_FORMAT.format('pun_fascia_f1')
+        elif (self.tipo == PUN_FASCIA_MONO):
+            self.entity_id = ENTITY_ID_FORMAT.format('pun_mono_orario')
+        else:
+            self.entity_id = None
+        self._attr_unique_id = self.entity_id
+        self._attr_has_entity_name = True
+
         # Inizializza le proprietà comuni
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_device_class = SensorDeviceClass.MONETARY
@@ -94,20 +108,6 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
         return "mdi:chart-line"
 
     @property
-    def entity_id(self) -> str:
-        """Restituisce l'entity id del sensore"""
-        if (self.tipo == PUN_FASCIA_F3):
-            return DOMAIN + ".fascia_f3"
-        elif (self.tipo == PUN_FASCIA_F2):
-            return DOMAIN + ".fascia_f2"
-        elif (self.tipo == PUN_FASCIA_F1):
-            return DOMAIN + ".fascia_f1"
-        elif (self.tipo == PUN_FASCIA_MONO):
-            return DOMAIN + ".mono_orario"
-        else:
-            return None
-
-    @property
     def name(self) -> str:
         """Restituisce il nome del sensore"""
         if (self.tipo == PUN_FASCIA_F3):
@@ -137,6 +137,11 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
 
         # Inizializza coordinator
         self.coordinator = coordinator
+
+        # ID univoco sensore basato su un nome fisso
+        self.entity_id = ENTITY_ID_FORMAT.format('pun_fascia_corrente')
+        self._attr_unique_id = self.entity_id
+        self._attr_has_entity_name = True
 
     def _handle_coordinator_update(self) -> None:
         """Gestisce l'aggiornamento dei dati dal coordinator"""
@@ -170,17 +175,20 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
         return "mdi:timeline-clock-outline"
 
     @property
-    def entity_id(self) -> str:
-        """Restituisce l'entity id del sensore"""
-        return DOMAIN + ".fascia_corrente"
-
-    @property
     def name(self) -> str:
         """Restituisce il nome del sensore"""
         return "Fascia corrente"
 
 class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity):
     """Sensore che rappresenta il prezzo PUN della fascia corrente"""
+
+    def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
+        super().__init__(coordinator)
+
+        # ID univoco sensore basato su un nome fisso
+        self.entity_id = ENTITY_ID_FORMAT.format('pun_prezzo_fascia_corrente')
+        self._attr_unique_id = self.entity_id
+        self._attr_has_entity_name = True
 
     @property
     def state_class(self) -> str:
@@ -227,11 +235,6 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity):
     def icon(self) -> str:
         """Icona da usare nel frontend"""
         return "mdi:currency-eur"
-
-    @property
-    def entity_id(self) -> str:
-        """Restituisce l'entity id del sensore"""
-        return DOMAIN + ".prezzo_fascia_corrente"
 
     @property
     def name(self) -> str:
