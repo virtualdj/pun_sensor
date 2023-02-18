@@ -26,7 +26,7 @@ Se la casella di controllo _Usa solo dati reali ad inizio mese_ è **attivata** 
 
 ![Screenshot integrazione](screenshots_main.png "Dati visualizzati")
 
-L'integrazione fornisce il nome della fascia corrente relativa all'orario di Home Assistant (tra F1 / F2 / F3), i prezzi delle tre fascie F1 / F2 / F3 più la fascia mono-oraria e il prezzo della fascia corrente.
+L'integrazione fornisce il nome della fascia corrente relativa all'orario di Home Assistant (tra F1 / F2 / F3), i prezzi delle tre fasce F1 / F2 / F3 più la fascia mono-oraria e il prezzo della fascia corrente.
 
 ## Note di sviluppo
 
@@ -43,4 +43,4 @@ Ovviamente non ho alcuna certezza che tutto questo sia la maniera giusta di proc
 - [YodaDaCoda/hass-solarman-modbus](https://github.com/YodaDaCoda/hass-solarman-modbus/blob/36ebd2d7eef7834867805ae01de433e8f8ab2ddb/custom_components/solarman/config_flow.py)
 - [bruxy70/Garbage-Collection](https://github.com/bruxy70/Garbage-Collection/blob/ae73818b3b0786ebcf72b16a6f27428e516686e6/custom_components/garbage_collection/sensor.py)
 - [dcmeglio/alarmdecoder-hass](https://github.com/dcmeglio/alarmdecoder-hass/blob/a898ae18cc5562b2a5fc3a73511302b6d242fd07/custom_components/alarmdecoder/__init__.py)
-- [BenPru/luxtronik](https://github.com/BenPru/luxtronik/blob/a6c5adfe91532237075fe17df63b59120a8b7098/custom_components/luxtronik/sensor.py#L856-L857) e [collse/Home-AssitantConfig](https://github.com/collse/Home-AssistantConfig/blob/e4a1bc6ee3c470619e4169ac903b88f5dad3b6a8/custom_components/elastic/sensor.py#L66) per due esempi di come assegnare un _entity-id_ predeterminato quando si usa anche l'_unique_id_ senza ricevere errori `AttributeError: can't set attribute 'entity_id'` (altra cosa non sufficientemente documentata di HomeAssistant)
+- [BenPru/luxtronik](https://github.com/BenPru/luxtronik/blob/a6c5adfe91532237075fe17df63b59120a8b7098/custom_components/luxtronik/sensor.py#L856-L857) e [collse/Home-AssistantConfig](https://github.com/collse/Home-AssistantConfig/blob/e4a1bc6ee3c470619e4169ac903b88f5dad3b6a8/custom_components/elastic/sensor.py#L66) per due esempi di come assegnare un _entity-id_ predeterminato quando si usa anche l'_unique_id_ senza ricevere errori `AttributeError: can't set attribute 'entity_id'` (altra cosa non sufficientemente documentata di HomeAssistant)
