@@ -79,6 +79,8 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
 
     def _handle_coordinator_update(self) -> None:
         """Gestisce l'aggiornamento dei dati dal coordinator"""
+        self._available = self.coordinator.orari[self.tipo] > 0
+        if (self._available): self._native_value = self.coordinator.pun[self.tipo]
         self.async_write_ha_state()
 
     @property
@@ -89,12 +91,12 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Determina se il valore è disponibile"""
-        return self.coordinator.orari[self.tipo] > 0
+        return self._available
 
     @property
     def native_value(self) -> float:
         """Valore corrente del sensore"""
-        return self.coordinator.pun[self.tipo]
+        return self._native_value
 
     @property
     def native_unit_of_measurement(self) -> str:
@@ -193,37 +195,41 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity):
         self._attr_unique_id = self.entity_id
         self._attr_has_entity_name = True
 
-    @property
-    def state_class(self) -> str:
-        return SensorStateClass.MEASUREMENT
+        # Inizializza le proprietà comuni
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_device_class = SensorDeviceClass.MONETARY
+        self._available = False
+        self._native_value = 0
 
-    @property
-    def device_class(self) -> str:
-        return SensorDeviceClass.MONETARY
+    def _handle_coordinator_update(self) -> None:
+        """Gestisce l'aggiornamento dei dati dal coordinator"""
+        if super().available:
+            if (self.coordinator.fascia_corrente == 3):
+                self._available = self.coordinator.orari[PUN_FASCIA_F3] > 0
+                self._native_value = self.coordinator.pun[PUN_FASCIA_F3]
+            elif (self.coordinator.fascia_corrente == 2):
+                self._available = self.coordinator.orari[PUN_FASCIA_F2] > 0
+                self._native_value = self.coordinator.pun[PUN_FASCIA_F2]
+            elif (self.coordinator.fascia_corrente == 1):
+                self._available = self.coordinator.orari[PUN_FASCIA_F1] > 0
+                self._native_value = self.coordinator.pun[PUN_FASCIA_F1]
+            else:
+                self._available = False
+                self._native_value = 0
+        else:
+            self._available = False
+            self._native_value = 0
+        self.async_write_ha_state()
 
     @property
     def available(self) -> bool:
         """Determina se il valore è disponibile"""
-        if super().available:
-            if (self.coordinator.fascia_corrente == 3):
-                return self.coordinator.orari[PUN_FASCIA_F3] > 0
-            elif (self.coordinator.fascia_corrente == 2):
-                return self.coordinator.orari[PUN_FASCIA_F2] > 0
-            elif (self.coordinator.fascia_corrente == 1):
-                return self.coordinator.orari[PUN_FASCIA_F1] > 0
-        return False
+        return self._available
 
     @property
     def native_value(self) -> float:
         """Restituisce il prezzo della fascia corrente"""
-        if (self.coordinator.fascia_corrente == 3):
-            return self.coordinator.pun[PUN_FASCIA_F3]
-        elif (self.coordinator.fascia_corrente == 2):
-            return self.coordinator.pun[PUN_FASCIA_F2]
-        elif (self.coordinator.fascia_corrente == 1):
-            return self.coordinator.pun[PUN_FASCIA_F1]
-        else:
-            return None
+        return self._native_value
 
     @property
     def native_unit_of_measurement(self) -> str:
