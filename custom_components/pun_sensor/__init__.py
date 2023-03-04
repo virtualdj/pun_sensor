@@ -303,8 +303,12 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         except:
             # Errori durante l'esecuzione dell'aggiornamento, riprova dopo
             if (self.web_retries == 0):
-                # Primo errore
-                self.web_retries = 4
+                # Primo errore, riprova dopo 1 minuto
+                self.web_retries = 5
+                retry_in_minutes = 1
+            elif (self.web_retries == 5):
+                # Secondo errore, riprova dopo 10 minuti
+                self.web_retries -= 1
                 retry_in_minutes = 10
             elif (self.web_retries == 1):
                 # Ultimo errore, tentativi esauriti
@@ -320,11 +324,11 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Prepara la schedulazione
             if (retry_in_minutes > 0):
                 # Minuti dopo
-                _LOGGER.warn('Errore durante l\'aggionamento via web, nuovo tentativo in %s minuti.', retry_in_minutes)
+                _LOGGER.warn('Errore durante l\'aggionamento via web, nuovo tentativo tra %s minut%s.', retry_in_minutes, 'o' if retry_in_minutes == 1 else 'i')
                 next_update_pun = dt_util.utcnow() + timedelta(minutes=retry_in_minutes)
             else:
                 # Giorno dopo
-                _LOGGER.warn('Errore durante l\'aggionamento via web, tentativi esauriti.')
+                _LOGGER.error('Errore durante l\'aggionamento via web, tentativi esauriti.')
                 next_update_pun = dt_util.now().replace(hour=self.scan_hour,
                                 minute=0, second=0, microsecond=0) + timedelta(days=1)
                 _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S'))
