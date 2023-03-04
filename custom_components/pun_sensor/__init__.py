@@ -47,19 +47,12 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     # Aggiorna immediatamente la fascia oraria corrente
     await coordinator.update_fascia()
 
-    # Calcola la data della prossima esecuzione (all'ora definita di domani)
-    next_update_pun = dt_util.now().replace(hour=coordinator.scan_hour,
-                            minute=0, second=0, microsecond=0)
-    if next_update_pun <= dt_util.now():
-            # Se l'evento è già trascorso la esegue domani alla stessa ora
-            next_update_pun = next_update_pun + timedelta(days=1)
-
-    # Schedula la prossima esecuzione dell'aggiornamento PUN
-    async_track_point_in_time(hass, coordinator.update_pun, next_update_pun)
-    _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S'))
-
     # Crea i sensori con la configurazione specificata
     hass.config_entries.async_setup_platforms(config, PLATFORMS)
+
+    # Schedula l'aggiornamento via web 10 secondi dopo l'avvio
+    async_track_point_in_time(hass, coordinator.update_pun,
+                              dt_util.now() + timedelta(seconds=10))
 
     # Registra il callback di modifica opzioni
     config.async_on_unload(config.add_update_listener(update_listener))
@@ -279,12 +272,15 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Evita rientranze nella funzione
         if ((dt_util.now() - self.web_last_run).total_seconds() < 2):
             return
+        
+        # Verifica se è il primo aggiornamento dopo l'avvio
+        first_update = (self.web_last_run == datetime.min.replace(tzinfo=dt_util.UTC))
         self.web_last_run = dt_util.now()
 
         # Verifica che non sia un nuovo tentativo dopo un errore
         if (self.web_retries == 0):
             # Verifica l'orario di esecuzione
-            if (now is not None):
+            if ((now is not None) and (not first_update)):
                 if (now.date() != dt_util.now().date()):
                     # Esecuzione alla data non corretta (vecchia schedulazione)
                     _LOGGER.debug('Aggiornamento web ignorato a causa della data di schedulazione non corretta (%s).', now)

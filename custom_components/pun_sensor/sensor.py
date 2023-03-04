@@ -29,7 +29,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry,
     # Restituisce il coordinator
     coordinator = hass.data[DOMAIN][config.entry_id]
 
-    # Aggiunge i sensori (legati al coordinator)
+    # Crea i sensori (legati al coordinator)
     entities = []
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_MONO))
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_F1))
@@ -37,7 +37,10 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry,
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_F3))
     entities.append(FasciaPUNSensorEntity(coordinator))
     entities.append(PrezzoFasciaPUNSensorEntity(coordinator))
-    async_add_entities(entities, update_before_add=True)
+
+    # Aggiunge i sensori ma non aggiorna automaticamente via web
+    # per lasciare il tempo ad Home Assistant di avviarsi
+    async_add_entities(entities, update_before_add=False)
     
 
 def fmt_float(num: float):

@@ -7,5 +7,5 @@
   "config_flow": true,
   "requirements": ["holidays", "bs4"],
   "iot_class": "local_polling",
-  "version": "0.2.4"
+  "version": "0.3.0b0"
 }
