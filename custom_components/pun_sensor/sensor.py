@@ -9,6 +9,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.helpers.restore_state import (
+    RestoreEntity,
+    ExtraStoredData,
+    RestoredExtraData
+)
 from typing import Any, Dict
 
 from . import PUNDataUpdateCoordinator
@@ -47,7 +52,7 @@ def fmt_float(num: float):
     """Formatta la media come numero decimale con 6 decimali"""
     return format(round(num, 6), '.6f')
 
-class PUNSensorEntity(CoordinatorEntity, SensorEntity):
+class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     """Sensore PUN relativo al prezzo medio mensile per fasce"""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator, tipo: int) -> None:
@@ -82,6 +87,23 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity):
         self._available = self.coordinator.orari[self.tipo] > 0
         if (self._available): self._native_value = self.coordinator.pun[self.tipo]
         self.async_write_ha_state()
+
+    @property
+    def extra_restore_state_data(self) -> ExtraStoredData:
+        """Determina i dati da salvare per il ripristino successivo"""
+        return RestoredExtraData(dict(
+            native_value = self._native_value if self._available else None
+        ))
+    
+    async def async_added_to_hass(self) -> None:
+        """Entità aggiunta ad Home Assistant"""
+        await super().async_added_to_hass()
+
+        # Recupera lo stato precedente, se esiste        
+        if (old_data := await self.async_get_last_extra_data()) is not None:
+            if (old_native_value := old_data.as_dict().get('native_value')) is not None:
+                self._available = True
+                self._native_value = old_native_value
 
     @property
     def should_poll(self) -> bool:
@@ -184,7 +206,7 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
         """Restituisce il nome del sensore"""
         return "Fascia corrente"
 
-class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity):
+class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
     """Sensore che rappresenta il prezzo PUN della fascia corrente"""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
@@ -220,6 +242,23 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity):
             self._available = False
             self._native_value = 0
         self.async_write_ha_state()
+
+    @property
+    def extra_restore_state_data(self) -> ExtraStoredData:
+        """Determina i dati da salvare per il ripristino successivo"""
+        return RestoredExtraData(dict(
+            native_value = self._native_value if self._available else None
+        ))
+    
+    async def async_added_to_hass(self) -> None:
+        """Entità aggiunta ad Home Assistant"""
+        await super().async_added_to_hass()
+
+        # Recupera lo stato precedente, se esiste        
+        if (old_data := await self.async_get_last_extra_data()) is not None:
+            if (old_native_value := old_data.as_dict().get('native_value')) is not None:
+                self._available = True
+                self._native_value = old_native_value
 
     @property
     def available(self) -> bool:
