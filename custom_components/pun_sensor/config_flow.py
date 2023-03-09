@@ -52,7 +52,7 @@ class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         """Gestione prima configurazione da Home Assistant"""
         # Controlla che l'integrazione non venga eseguita più volte
-        await self.async_set_unique_id('PUN')
+        await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
 
         errors = {}
