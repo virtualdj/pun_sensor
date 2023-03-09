@@ -24,6 +24,10 @@ from .const import (
     PUN_FASCIA_F2,
     PUN_FASCIA_F3,
 )
+
+from awesomeversion.awesomeversion import AwesomeVersion
+from homeassistant.const import __version__ as HA_VERSION
+from homeassistant.const import CURRENCY_EURO, UnitOfEnergy
 ATTR_ROUNDED_DECIMALS = "rounded_decimals"
 
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry,
@@ -33,6 +37,10 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry,
 
     # Restituisce il coordinator
     coordinator = hass.data[DOMAIN][config.entry_id]
+
+    # Verifica la versione di Home Assistant
+    global has_suggested_display_precision
+    has_suggested_display_precision = (AwesomeVersion(HA_VERSION) >= AwesomeVersion("2023.3.0"))
 
     # Crea i sensori (legati al coordinator)
     entities = []
@@ -49,7 +57,13 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry,
     
 
 def fmt_float(num: float):
-    """Formatta la media come numero decimale con 6 decimali"""
+    """Formatta adeguatamente il numero decimale"""
+    if has_suggested_display_precision:
+        return num
+    
+    # In versioni precedenti di Home Assistant che non supportano
+    # l'attributo 'suggested_display_precision' restituisce il numero
+    # decimale già adeguatamente formattato come stringa
     return format(round(num, 6), '.6f')
 
 class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
@@ -79,6 +93,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         # Inizializza le proprietà comuni
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_suggested_display_precision = 6
         self._available = False
         self._native_value = 0
 
@@ -123,7 +138,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     @property
     def native_unit_of_measurement(self) -> str:
         """Unita' di misura"""
-        return "€/kWh"
+        return f"{CURRENCY_EURO}/{UnitOfEnergy.KILO_WATT_HOUR}"
 
     @property
     def state(self) -> str:
@@ -151,6 +166,11 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Restituisce gli attributi di stato"""
+        if has_suggested_display_precision:
+            return None
+        
+        # Nelle versioni precedenti di Home Assistant
+        # restituisce un valore arrotondato come attributo
         state_attr = {
             ATTR_ROUNDED_DECIMALS: str(format(round(self.native_value, 3), '.3f'))
         }
@@ -220,6 +240,7 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
         # Inizializza le proprietà comuni
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_device_class = SensorDeviceClass.MONETARY
+        self._attr_suggested_display_precision = 6
         self._available = False
         self._native_value = 0
 
@@ -273,7 +294,7 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
     @property
     def native_unit_of_measurement(self) -> str:
         """Unita' di misura"""
-        return "€/kWh"
+        return f"{CURRENCY_EURO}/{UnitOfEnergy.KILO_WATT_HOUR}"
 
     @property
     def state(self) -> str:
@@ -292,6 +313,11 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Restituisce gli attributi di stato"""
+        if has_suggested_display_precision:
+            return None
+        
+        # Nelle versioni precedenti di Home Assistant
+        # restituisce un valore arrotondato come attributo
         state_attr = {
             ATTR_ROUNDED_DECIMALS: str(format(round(self.native_value, 3), '.3f'))
         }
