@@ -48,7 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     await coordinator.update_fascia()
 
     # Crea i sensori con la configurazione specificata
-    hass.config_entries.async_setup_platforms(config, PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(config, PLATFORMS)
 
     # Schedula l'aggiornamento via web 10 secondi dopo l'avvio
     async_track_point_in_time(hass, coordinator.update_pun,
