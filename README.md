@@ -28,6 +28,21 @@ Se la casella di controllo _Usa solo dati reali ad inizio mese_ è **attivata** 
 
 L'integrazione fornisce il nome della fascia corrente relativa all'orario di Home Assistant (tra F1 / F2 / F3), i prezzi delle tre fasce F1 / F2 / F3 più la fascia mono-oraria e il prezzo della fascia corrente.
 
+### Prezzo al dettaglio
+
+Questo componente fornisce informazioni sul prezzo all'ingrosso dell'energia elettrica: per calcolare il prezzo al dettaglio, è necessario creare un sensore fittizio, basato sui dati specifici del proprio contratto con il fornitore finale.
+
+Ad esempio, di seguito un sensore configurato manualmente:
+
+```yml
+      - unique_id: prezzo_attuale_energia_al_dettaglio
+        name: 'Prezzo attuale energia al dettaglio'
+        icon: mdi:currency-eur
+        unit_of_measurement: '€/kWh'
+        state: >
+          {{ (1.1 * (states('sensor.pun_prezzo_fascia_corrente')|float(0) + 0.0087 + 0.04 + 0.0227))|round(3) }}
+```
+
 ## Note di sviluppo
 
 Questo è la mia prima esperienza con le integrazioni di Home Assistant e, in generale, con Python. Purtroppo, mio malgrado, ho scoperto che la **documentazione di Home Assistant** per quanto riguarda la creazione di nuove integrazioni è **scarsa e incompleta**.
