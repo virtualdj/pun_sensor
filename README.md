@@ -2,6 +2,8 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
+[![Validate with hassfest](https://github.com/virtualdj/pun_sensor/actions/workflows/hassfest.yml/badge.svg?branch=master)](https://github.com/virtualdj/pun_sensor/actions/workflows/hassfest.yml) [![Validate with HACS](https://github.com/virtualdj/pun_sensor/actions/workflows/hacs.yml/badge.svg)](https://github.com/virtualdj/pun_sensor/actions/workflows/hacs.yml)
+
 Integrazione per **Home Assistant** (basata sullo script [pun-fasce](https://github.com/virtualdj/pun-fasce)) che mostra i prezzi stimati del mese corrente per fasce orarie (F1, F2 e F3 e mono-oraria) nonché la fascia oraria attuale.
 
 I valori vengono scaricati dal sito [MercatoElettrico.org](https://www.mercatoelettrico.org/It/Default.aspx) per l'intero mese e viene calcolata la media per fasce giorno per giorno, in questo modo verso la fine del mese il valore mostrato si avvicina sempre di più al prezzo reale del PUN in bolletta (per i contratti a prezzo variabile).
