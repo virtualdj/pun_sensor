@@ -332,11 +332,11 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Prepara la schedulazione
             if (retry_in_minutes > 0):
                 # Minuti dopo
-                _LOGGER.warn('Errore durante l\'aggionamento via web, nuovo tentativo tra %s minut%s.', retry_in_minutes, 'o' if retry_in_minutes == 1 else 'i', exc_info=e)
+                _LOGGER.warn('Errore durante l\'aggiornamento via web, nuovo tentativo tra %s minut%s.', retry_in_minutes, 'o' if retry_in_minutes == 1 else 'i', exc_info=e)
                 next_update_pun = dt_util.utcnow() + timedelta(minutes=retry_in_minutes)
             else:
                 # Giorno dopo
-                _LOGGER.error('Errore durante l\'aggionamento via web, tentativi esauriti.', exc_info=e)
+                _LOGGER.error('Errore durante l\'aggiornamento via web, tentativi esauriti.', exc_info=e)
                 next_update_pun = dt_util.now().replace(hour=self.scan_hour,
                                 minute=0, second=0, microsecond=0) + timedelta(days=1)
                 _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S %z'))
