@@ -17,6 +17,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 from homeassistant.helpers.event import async_track_point_in_time
 import homeassistant.util.dt as dt_util
+from zoneinfo import ZoneInfo
 
 from .const import (
     DOMAIN,
@@ -33,6 +34,9 @@ from .const import (
 
 import logging
 _LOGGER = logging.getLogger(__name__)
+
+# Usa sempre il fuso orario italiano (i dati del sito sono per il mercato italiano)
+tz_pun = ZoneInfo('Europe/Rome')
 
 # Definisce i tipi di entità
 PLATFORMS: list[str] = ["sensor"]
@@ -90,7 +94,7 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
         # Schedula la prossima esecuzione
         coordinator.web_retries = 0
         async_track_point_in_time(coordinator.hass, coordinator.update_pun, next_update_pun)
-        _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S'))
+        _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S %z'))
 
     if config.options[CONF_ACTUAL_DATA_ONLY] != coordinator.actual_data_only:
         # Modificata impostazione 'Usa dati reali'
@@ -256,9 +260,13 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
     async def update_fascia(self, now=None):
         """Aggiorna la fascia oraria corrente"""
 
+        # Scrive l'ora corrente (a scopi di debug)
+        _LOGGER.debug('Ora corrente sistema: %s', dt_util.now().strftime('%a %d/%m/%Y %H:%M:%S %z'))
+        _LOGGER.debug('Ora corrente fuso orario italiano: %s', dt_util.now(time_zone=tz_pun).strftime('%a %d/%m/%Y %H:%M:%S %z'))
+
         # Ottiene la fascia oraria corrente e il prossimo aggiornamento
-        self.fascia_corrente, next_update_fascia = get_fascia(dt_util.now())
-        _LOGGER.info('Nuova fascia corrente: F%s (prossima: %s)', self.fascia_corrente, next_update_fascia.strftime('%a %d/%m/%Y %H:%M:%S'))
+        self.fascia_corrente, next_update_fascia = get_fascia(dt_util.now(time_zone=tz_pun))
+        _LOGGER.info('Nuova fascia corrente: F%s (prossima: %s)', self.fascia_corrente, next_update_fascia.strftime('%a %d/%m/%Y %H:%M:%S %z'))
 
         # Notifica che i dati sono stati aggiornati (fascia)
         self.async_set_updated_data({ COORD_EVENT: EVENT_UPDATE_FASCIA })
@@ -331,7 +339,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.error('Errore durante l\'aggionamento via web, tentativi esauriti.', exc_info=e)
                 next_update_pun = dt_util.now().replace(hour=self.scan_hour,
                                 minute=0, second=0, microsecond=0) + timedelta(days=1)
-                _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S'))
+                _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S %z'))
             
             # Schedula ed esce
             async_track_point_in_time(self.hass, self.update_pun, next_update_pun)
@@ -349,7 +357,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # Schedula la prossima esecuzione
         async_track_point_in_time(self.hass, self.update_pun, next_update_pun)
-        _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S'))
+        _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S %z'))
 
 def get_fascia_for_xml(data, festivo, ora) -> int:
     """Restituisce il numero di fascia oraria di un determinato giorno/ora"""
