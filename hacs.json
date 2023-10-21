@@ -1,5 +1,6 @@
 {
     "name": "Prezzi PUN del mese",
     "homeassistant": "2022.8",
+    "hacs": "1.33.0",
     "render_readme": true
 }
