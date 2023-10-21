@@ -55,7 +55,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(config, PLATFORMS)
 
     # Schedula l'aggiornamento via web 10 secondi dopo l'avvio
-    async_call_later(hass, timedelta(seconds=10), coordinator.update_pun)
+    coordinator.schedule_token = async_call_later(hass, timedelta(seconds=10), coordinator.update_pun)
 
     # Registra il callback di modifica opzioni
     config.async_on_unload(config.add_update_listener(update_listener))
@@ -90,9 +90,14 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
             # (perciò se è uguale esegue subito l'aggiornamento)
             next_update_pun = next_update_pun + timedelta(days=1)
 
+        # Annulla eventuali schedulazioni attive
+        if coordinator.schedule_token is not None:
+            coordinator.schedule_token()
+            coordinator.schedule_token = None
+
         # Schedula la prossima esecuzione
         coordinator.web_retries = 0
-        async_track_point_in_time(coordinator.hass, coordinator.update_pun, next_update_pun)
+        coordinator.schedule_token = async_track_point_in_time(coordinator.hass, coordinator.update_pun, next_update_pun)
         _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S %z'))
 
     if config.options[CONF_ACTUAL_DATA_ONLY] != coordinator.actual_data_only:
@@ -100,9 +105,14 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
         coordinator.actual_data_only = config.options[CONF_ACTUAL_DATA_ONLY]
         _LOGGER.debug('Nuovo valore \'usa dati reali\': %s.', coordinator.actual_data_only)
 
-        # Forza un nuovo aggiornamento immediato
+        # Annulla eventuali schedulazioni attive
+        if coordinator.schedule_token is not None:
+            coordinator.schedule_token()
+            coordinator.schedule_token = None
+
+        # Esegue un nuovo aggiornamento immediatamente
         coordinator.web_retries = 0
-        await coordinator.update_pun()
+        coordinator.schedule_token = async_call_later(coordinator.hass, timedelta(seconds=5), coordinator.update_pun)
 
 
 class PUNDataUpdateCoordinator(DataUpdateCoordinator):
@@ -127,7 +137,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # Inizializza i valori di default
         self.web_retries = 0
-        self.web_last_run = datetime.min.replace(tzinfo=dt_util.UTC)
+        self.schedule_token = None
         self.pun = [0.0, 0.0, 0.0, 0.0]
         self.orari = [0, 0, 0, 0]
         self.fascia_corrente = None
@@ -276,30 +286,6 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
     async def update_pun(self, now=None):
         """Aggiorna i prezzi PUN da Internet (funziona solo se schedulata)"""
 
-        # Evita rientranze nella funzione
-        if ((dt_util.now() - self.web_last_run).total_seconds() < 2):
-            return
-        
-        # Verifica se è il primo aggiornamento dopo l'avvio
-        first_update = (self.web_last_run == datetime.min.replace(tzinfo=dt_util.UTC))
-        self.web_last_run = dt_util.now()
-
-        # Verifica che non sia un nuovo tentativo dopo un errore
-        if (self.web_retries == 0):
-            # Verifica l'orario di esecuzione
-            if ((now is not None) and (not first_update)):
-                if (now.date() != dt_util.now().date()):
-                    # Esecuzione alla data non corretta (vecchia schedulazione)
-                    _LOGGER.debug('Aggiornamento web ignorato a causa della data di schedulazione non corretta (%s).', now)
-                    return
-                elif (now.hour != self.scan_hour):
-                    # Esecuzione all'ora non corretta (vecchia schedulazione)
-                    _LOGGER.debug('Aggiornamento web ignorato a causa dell\'ora di schedulazione non corretta (%s != %s).', now.hour, self.scan_hour)
-                    return
-            elif (now is None):
-                # Esecuzione non schedulata
-                _LOGGER.debug('Esecuzione aggiornamento web non schedulato.')
-
         # Aggiorna i dati da web
         try:
             # Esegue l'aggiornamento
@@ -327,18 +313,23 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                 # Ulteriori errori (4, 3, 2)
                 self.web_retries -= 1
                 retry_in_minutes = 60 * (4 - self.web_retries)
-            
+
+            # Annulla eventuali schedulazioni attive
+            if self.schedule_token is not None:
+                self.schedule_token()
+                self.schedule_token = None
+
             # Prepara la schedulazione
             if (retry_in_minutes > 0):
                 # Minuti dopo
                 _LOGGER.warn('Errore durante l\'aggiornamento via web, nuovo tentativo tra %s minut%s.', retry_in_minutes, 'o' if retry_in_minutes == 1 else 'i', exc_info=e)
-                async_call_later(self.hass, timedelta(minutes=retry_in_minutes), self.update_pun)
+                self.schedule_token = async_call_later(self.hass, timedelta(minutes=retry_in_minutes), self.update_pun)
             else:
                 # Giorno dopo
                 _LOGGER.error('Errore durante l\'aggiornamento via web, tentativi esauriti.', exc_info=e)
                 next_update_pun = dt_util.now().replace(hour=self.scan_hour,
                                 minute=0, second=0, microsecond=0) + timedelta(days=1)
-                async_track_point_in_time(self.hass, self.update_pun, next_update_pun)
+                self.schedule_token = async_track_point_in_time(self.hass, self.update_pun, next_update_pun)
                 _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S %z'))
             
             # Esce e attende la prossima schedulazione
@@ -354,8 +345,13 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Se l'evento è già trascorso la esegue domani alla stessa ora
             next_update_pun = next_update_pun + timedelta(days=1)
 
+        # Annulla eventuali schedulazioni attive
+        if self.schedule_token is not None:
+            self.schedule_token()
+            self.schedule_token = None
+
         # Schedula la prossima esecuzione
-        async_track_point_in_time(self.hass, self.update_pun, next_update_pun)
+        self.schedule_token = async_track_point_in_time(self.hass, self.update_pun, next_update_pun)
         _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S %z'))
 
 def get_fascia_for_xml(data, festivo, ora) -> int:

@@ -1,14 +1,14 @@
 {
   "domain": "pun_sensor",
   "name": "Prezzi PUN del mese",
-  "codeowners": [
-    "@virtualdj"
-  ],
+  "codeowners": ["@virtualdj"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/virtualdj/pun_sensor",
-  "iot_class": "local_polling",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/virtualdj/pun_sensor/issues",
+  "loggers": ["pun_sensor"],
   "requirements": ["holidays", "bs4"],
-  "version": "0.3.3"
+  "version": "0.4.0"
 }
