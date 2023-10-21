@@ -15,7 +15,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
-from homeassistant.helpers.event import async_track_point_in_time
+from homeassistant.helpers.event import async_track_point_in_time, async_call_later
 import homeassistant.util.dt as dt_util
 from zoneinfo import ZoneInfo
 
@@ -55,8 +55,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(config, PLATFORMS)
 
     # Schedula l'aggiornamento via web 10 secondi dopo l'avvio
-    async_track_point_in_time(hass, coordinator.update_pun,
-                              dt_util.now() + timedelta(seconds=10))
+    async_call_later(hass, timedelta(seconds=10), coordinator.update_pun)
 
     # Registra il callback di modifica opzioni
     config.async_on_unload(config.add_update_listener(update_listener))
@@ -333,16 +332,16 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             if (retry_in_minutes > 0):
                 # Minuti dopo
                 _LOGGER.warn('Errore durante l\'aggiornamento via web, nuovo tentativo tra %s minut%s.', retry_in_minutes, 'o' if retry_in_minutes == 1 else 'i', exc_info=e)
-                next_update_pun = dt_util.utcnow() + timedelta(minutes=retry_in_minutes)
+                async_call_later(self.hass, timedelta(minutes=retry_in_minutes), self.update_pun)
             else:
                 # Giorno dopo
                 _LOGGER.error('Errore durante l\'aggiornamento via web, tentativi esauriti.', exc_info=e)
                 next_update_pun = dt_util.now().replace(hour=self.scan_hour,
                                 minute=0, second=0, microsecond=0) + timedelta(days=1)
+                async_track_point_in_time(self.hass, self.update_pun, next_update_pun)
                 _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S %z'))
             
-            # Schedula ed esce
-            async_track_point_in_time(self.hass, self.update_pun, next_update_pun)
+            # Esce e attende la prossima schedulazione
             return
 
         # Notifica che i dati PUN sono stati aggiornati con successo
