@@ -48,6 +48,18 @@ template:
           {{ (1.1 * (states('sensor.pun_prezzo_fascia_corrente')|float(0) + 0.0087 + 0.04 + 0.0227))|round(3) }}
 ```
 
+### In caso di problemi
+
+È possibile abilitare la registrazione dei log tramite l'interfaccia grafica in **Impostazioni > Dispositivi e servizi > Prezzi PUN del mese** e cliccando sul pulsante **Abilita la registrazione di debug**.
+
+![Abilitazione log di debug](screenshot_debug_1.png "Abilitazione log di debug")
+
+Il tasto verrà modificato come nell'immagine qui sotto:
+
+![Estrazione log di debug](screenshot_debug_2.png "Estrazione log di debug")
+
+Dopo che si verifica il problema, premerlo nuovamente: in questo modo verrà scaricato un file di log con le informazioni da allegare alle [Issue](https://github.com/virtualdj/pun_sensor/issues).
+
 ## Note di sviluppo
 
 Questa è la mia prima esperienza con le integrazioni di Home Assistant e, in generale, con Python. Purtroppo, mio malgrado, ho scoperto che la **documentazione di Home Assistant** per quanto riguarda la creazione di nuove integrazioni è **scarsa e incompleta**.
