@@ -10,5 +10,5 @@
   "issue_tracker": "https://github.com/virtualdj/pun_sensor/issues",
   "loggers": ["pun_sensor"],
   "requirements": ["holidays", "bs4"],
-  "version": "0.4.0"
+  "version": "0.4.1"
 }

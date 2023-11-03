@@ -437,9 +437,9 @@ def get_fascia(dataora: datetime) -> Tuple[int, datetime]:
             fascia = 3
 
             # Prossima fascia: alle 7 di un giorno non domenica o festività
-            prossima = (dataora + timedelta(days=1)).replace(hour=7,
+            prossima = dataora.replace(hour=7,
                         minute=0, second=0, microsecond=0)
-            while ((prossima in holidays.IT()) or (prossima.weekday() == 6)):
+            while ((prossima <= dataora) or (prossima in holidays.IT()) or (prossima.weekday() == 6)):
                 prossima += timedelta(days=1)
 
         else:
