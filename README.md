@@ -24,6 +24,10 @@ Qui è possibile selezionare un'ora del giorno in cui scaricare i prezzi aggiorn
 
 Se la casella di controllo _Usa solo dati reali ad inizio mese_ è **attivata**, all'inizio del mese quando non ci sono i prezzi per tutte le fasce orarie questi vengono disabilitati (non viene mostrato quindi un prezzo in €/kWh finché i dati non sono in numero sufficiente); nel caso invece la casella fosse **disattivata** (default) nel conteggio vengono inclusi gli ultimi giorni del mese precedente in modo da avere sempre un valore in €/kWh.
 
+### Aggiornamento manuale
+
+È possibile forzare un **aggiornamento manuale** richiamando il servizio *Home Assistant Core Integration: Aggiorna entità* (`homeassistant.update_entity`) e passando come destinazione una qualsiasi entità tra quelle fornite da questa integrazione: questo causerà chiaramente un nuovo download dei dati.
+
 ### Aspetto dei dati
 
 ![Screenshot integrazione](screenshots_main.png "Dati visualizzati")
