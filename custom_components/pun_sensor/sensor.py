@@ -243,6 +243,7 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
         self._attr_suggested_display_precision = 6
         self._available = False
         self._native_value = 0
+        self._friendly_name = "Prezzo fascia corrente"
 
     def _handle_coordinator_update(self) -> None:
         """Gestisce l'aggiornamento dei dati dal coordinator"""
@@ -250,25 +251,31 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
             if (self.coordinator.fascia_corrente == 3):
                 self._available = self.coordinator.orari[PUN_FASCIA_F3] > 0
                 self._native_value = self.coordinator.pun[PUN_FASCIA_F3]
+                self._friendly_name = "Prezzo fascia corrente (F3)"
             elif (self.coordinator.fascia_corrente == 2):
                 self._available = self.coordinator.orari[PUN_FASCIA_F2] > 0
                 self._native_value = self.coordinator.pun[PUN_FASCIA_F2]
+                self._friendly_name = "Prezzo fascia corrente (F2)"
             elif (self.coordinator.fascia_corrente == 1):
                 self._available = self.coordinator.orari[PUN_FASCIA_F1] > 0
                 self._native_value = self.coordinator.pun[PUN_FASCIA_F1]
+                self._friendly_name = "Prezzo fascia corrente (F1)"
             else:
                 self._available = False
                 self._native_value = 0
+                self._friendly_name = "Prezzo fascia corrente"
         else:
             self._available = False
             self._native_value = 0
+            self._friendly_name = "Prezzo fascia corrente"
         self.async_write_ha_state()
 
     @property
     def extra_restore_state_data(self) -> ExtraStoredData:
         """Determina i dati da salvare per il ripristino successivo"""
         return RestoredExtraData(dict(
-            native_value = self._native_value if self._available else None
+            native_value = self._native_value if self._available else None,
+            friendly_name = self._friendly_name if self._available else None
         ))
     
     async def async_added_to_hass(self) -> None:
@@ -280,6 +287,8 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
             if (old_native_value := old_data.as_dict().get('native_value')) is not None:
                 self._available = True
                 self._native_value = old_native_value
+            if (old_friendly_name := old_data.as_dict().get('friendly_name')) is not None:
+                self._friendly_name = old_friendly_name
 
     @property
     def available(self) -> bool:
@@ -308,7 +317,7 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
     @property
     def name(self) -> str:
         """Restituisce il nome del sensore"""
-        return "Prezzo fascia corrente"
+        return self._friendly_name
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
