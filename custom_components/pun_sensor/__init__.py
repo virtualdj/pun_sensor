@@ -22,6 +22,7 @@ from zoneinfo import ZoneInfo
 from .const import (
     DOMAIN,
     PUN_FASCIA_MONO,
+    PUN_FASCIA_F23,
     PUN_FASCIA_F1,
     PUN_FASCIA_F2,
     PUN_FASCIA_F3,
@@ -138,8 +139,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Inizializza i valori di default
         self.web_retries = 0
         self.schedule_token = None
-        self.pun = [0.0, 0.0, 0.0, 0.0]
-        self.orari = [0, 0, 0, 0]
+        self.pun = [0.0, 0.0, 0.0, 0.0, 0.0]
+        self.orari = [0, 0, 0, 0, 0]
         self.fascia_corrente = None
         _LOGGER.debug('Coordinator inizializzato (con \'usa dati reali\' = %s).', self.actual_data_only)
 
@@ -263,6 +264,18 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.pun[PUN_FASCIA_F2] = mean(f2)
         if self.orari[PUN_FASCIA_F3] > 0:
             self.pun[PUN_FASCIA_F3] = mean(f3)
+
+        # Calcola la fascia F23 (a partire da F2 ed F3)
+        # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:
+	    # https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806
+        if self.orari[PUN_FASCIA_F2] > 0 and self.orari[PUN_FASCIA_F3] > 0:
+            # Esistono dati sia per F2 che per F3
+            self.orari[PUN_FASCIA_F23] = self.orari[PUN_FASCIA_F2] + self.orari[PUN_FASCIA_F3]
+            self.pun[PUN_FASCIA_F23] = 0.46 * self.pun[PUN_FASCIA_F2] + 0.54 * self.pun[PUN_FASCIA_F3]
+        else:
+            # Devono esserci dati sia per F2 che per F3 affinché il risultato sia valido
+            self.orari[PUN_FASCIA_F23] = 0
+            self.pun[PUN_FASCIA_F23] = 0
        
         # Logga i dati
         _LOGGER.debug('Numero di dati: ' + ', '.join(str(i) for i in self.orari))

@@ -20,6 +20,7 @@ from . import PUNDataUpdateCoordinator
 from .const import (
     DOMAIN,
     PUN_FASCIA_MONO,
+    PUN_FASCIA_F23,
     PUN_FASCIA_F1,
     PUN_FASCIA_F2,
     PUN_FASCIA_F3,
@@ -45,6 +46,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry,
     # Crea i sensori (legati al coordinator)
     entities = []
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_MONO))
+    entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_F23))
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_F1))
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_F2))
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_F3))
@@ -85,6 +87,8 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
             self.entity_id = ENTITY_ID_FORMAT.format('pun_fascia_f1')
         elif (self.tipo == PUN_FASCIA_MONO):
             self.entity_id = ENTITY_ID_FORMAT.format('pun_mono_orario')
+        elif (self.tipo == PUN_FASCIA_F23):
+            self.entity_id = ENTITY_ID_FORMAT.format('pun_fascia_f23')
         else:
             self.entity_id = None
         self._attr_unique_id = self.entity_id
@@ -160,6 +164,8 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
             return "PUN fascia F1"
         elif (self.tipo == PUN_FASCIA_MONO):
             return "PUN mono-orario"
+        elif (self.tipo == PUN_FASCIA_F23):
+            return "PUN fascia F23"
         else:
             return None
 
