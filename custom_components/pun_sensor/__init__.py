@@ -160,6 +160,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         DOWNLOAD_URL = 'https://www.mercatoelettrico.org/It/download/DownloadDati.aspx?val=MGP_Prezzi'
         
         # Apre la pagina per generare i cookie e i campi nascosti
+        _LOGGER.debug('Connessione a URL login.')
         async with self.session.get(LOGIN_URL) as response:
             soup = BeautifulSoup(await response.read(), features='html.parser')
         
@@ -175,6 +176,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         }
 
         # Effettua il login (che se corretto porta alla pagina di download XML grazie al 'ReturnUrl')
+        _LOGGER.debug('Invio credenziali a URL login.')
         async with self.session.post(LOGIN_URL, data=login_payload) as response:
             soup = BeautifulSoup(await response.read(), features='html.parser')
 
@@ -188,6 +190,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         }
 
         # Effettua il download dello ZIP con i file XML
+        _LOGGER.debug('Inizio download file ZIP con XML.')
         async with self.session.post(DOWNLOAD_URL, data=data_request_payload) as response:
             # Scompatta lo ZIP in memoria
             try:
