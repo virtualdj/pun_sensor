@@ -421,6 +421,13 @@ def get_fascia(dataora: datetime) -> Tuple[int, datetime]:
             # Prossima fascia: alle 23 dello stesso giorno
             prossima = dataora.replace(hour=23,
                             minute=0, second=0, microsecond=0)
+        elif (dataora.hour < 7):
+            # Sabato tra le 0 e le 7
+            fascia = 3
+
+            # Prossima fascia: alle 7 dello stesso giorno
+            prossima = dataora.replace(hour=7,
+                            minute=0, second=0, microsecond=0)
         else:
             # Sabato dopo le 23
             fascia = 3
