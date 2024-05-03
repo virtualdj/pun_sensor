@@ -6,6 +6,7 @@ import zipfile, io
 from bs4 import BeautifulSoup
 import xml.etree.ElementTree as et
 from typing import Tuple
+from functools import partial
 
 from aiohttp import ClientSession
 from homeassistant.core import HomeAssistant
@@ -16,6 +17,7 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 from homeassistant.helpers.event import async_track_point_in_time, async_call_later
+from homeassistant.setup import SetupPhases, async_pause_setup
 import homeassistant.util.dt as dt_util
 from zoneinfo import ZoneInfo
 
@@ -44,6 +46,10 @@ PLATFORMS: list[str] = ["sensor"]
 
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     """Impostazione dell'integrazione da configurazione Home Assistant"""
+
+    # Carica le dipendenze di holidays in background
+    with async_pause_setup(hass, SetupPhases.WAIT_IMPORT_PACKAGES):
+        await hass.async_add_import_executor_job(holidays.IT)
     
     # Salva il coordinator nella configurazione
     coordinator = PUNDataUpdateCoordinator(hass, config)
@@ -163,7 +169,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Apre la pagina per generare i cookie e i campi nascosti
         _LOGGER.debug('Connessione a URL login.')
         async with self.session.get(LOGIN_URL) as response:
-            soup = BeautifulSoup(await response.read(), features='html.parser')
+            soup = await self.hass.async_add_executor_job(
+                partial(BeautifulSoup, await response.read(), features='html.parser')
+            )
         
         # Recupera i campi nascosti __VIEWSTATE e __EVENTVALIDATION per la prossima richiesta
         viewstate = soup.find('input',{'name':'__VIEWSTATE'})['value']
@@ -179,7 +187,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Effettua il login (che se corretto porta alla pagina di download XML grazie al 'ReturnUrl')
         _LOGGER.debug('Invio credenziali a URL login.')
         async with self.session.post(LOGIN_URL, data=login_payload) as response:
-            soup = BeautifulSoup(await response.read(), features='html.parser')
+            soup = await self.hass.async_add_executor_job(
+                partial(BeautifulSoup, await response.read(), features='html.parser')
+            )
 
         # Recupera i campi nascosti __VIEWSTATE per la prossima richiesta
         viewstate = soup.find('input',{'name':'__VIEWSTATE'})['value']    

@@ -7,8 +7,10 @@
   "documentation": "https://github.com/virtualdj/pun_sensor",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
+  "import_executor": true,
   "issue_tracker": "https://github.com/virtualdj/pun_sensor/issues",
   "loggers": ["pun_sensor"],
   "requirements": ["holidays", "bs4"],
-  "version": "0.6.0"
+  "single_config_entry": true,
+  "version": "0.7.0"
 }
