@@ -68,6 +68,18 @@ async def async_setup_entry(
     async_add_entities(entities, update_before_add=False)
 
 
+
+def decode_fascia(fascia: int) -> str | None:
+    if fascia == 3:
+        return "F3"
+    elif fascia == 2:
+        return "F2"
+    elif fascia == 1:
+        return "F1"
+    else:
+        return None
+
+
 def fmt_float(num: float) -> str:
     """Formatta adeguatamente il numero decimale."""
     if has_suggested_display_precision:
@@ -218,9 +230,26 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
         return self.coordinator.fascia_corrente is not None
 
     @property
-    def state(self) -> str:
-        """Restituisce la fascia corrente come stato."""
-        return f"F{self.coordinator.fascia_corrente}"
+    def device_class(self) -> SensorDeviceClass | None:
+        return SensorDeviceClass.ENUM
+
+    @property
+    def options(self) -> list[str] | None:
+        return ["F1", "F2", "F3"]
+
+    @property
+    def native_value(self) -> str | None:
+        """Restituisce la fascia corrente come stato"""
+        return decode_fascia(self.coordinator.fascia_corrente)
+
+    @override
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        return {
+            'fascia_successiva': decode_fascia(self.coordinator.fascia_successiva),
+            'inizio_fascia_successiva': self.coordinator.prossimo_cambio_fascia,
+            'termine_fascia_successiva': self.coordinator.termine_prossima_fascia
+        }
 
     @property
     def icon(self) -> str:
