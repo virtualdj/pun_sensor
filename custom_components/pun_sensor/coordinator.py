@@ -3,13 +3,14 @@
 # pylint: disable=W0613
 import io
 import logging
-import xml.etree.ElementTree as et
+
 import zipfile
 from datetime import date, timedelta
 from statistics import mean
 from zoneinfo import ZoneInfo
 
 import holidays
+import defusedxml.ElementTree as et
 import homeassistant.util.dt as dt_util
 from aiohttp import ClientSession
 from homeassistant.config_entries import ConfigEntry
