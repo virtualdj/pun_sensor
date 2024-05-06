@@ -114,9 +114,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Scompatta lo ZIP in memoria
             try:
                 archive = zipfile.ZipFile(io.BytesIO(await response.read()))
-            except:
+            except (zipfile.BadZipfile, IOError) as e:  # not a zip:
                 # Esce perché l'output non è uno ZIP
-                raise UpdateFailed("Archivio ZIP scaricato dal sito non valido.")
+                raise UpdateFailed("Archivio ZIP scaricato dal sito non valido.") from e
 
         # Mostra i file nell'archivio
         _LOGGER.debug(
