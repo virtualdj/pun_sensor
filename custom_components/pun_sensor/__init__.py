@@ -1,42 +1,29 @@
 """Prezzi PUN del mese"""
 
-import io
 import logging
-import xml.etree.ElementTree as et
-import zipfile
-from datetime import date, timedelta
-from functools import partial
-from statistics import mean
+
+
+from datetime import timedelta
+
+
 from zoneinfo import ZoneInfo
 
 import holidays
 import homeassistant.util.dt as dt_util
-from aiohttp import ClientSession
-from bs4 import BeautifulSoup
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.event import async_call_later, async_track_point_in_time
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
-from homeassistant.setup import SetupPhases, async_pause_setup
-from .utils import get_fascia, get_fascia_for_xml
 
+from homeassistant.helpers.event import async_call_later, async_track_point_in_time
+
+from homeassistant.setup import SetupPhases, async_pause_setup
+
+from .coordinator import PUNDataUpdateCoordinator
 
 from .const import (
     CONF_ACTUAL_DATA_ONLY,
     CONF_SCAN_HOUR,
-    COORD_EVENT,
     DOMAIN,
-    EVENT_UPDATE_FASCIA,
-    EVENT_UPDATE_PUN,
-    PUN_FASCIA_F1,
-    PUN_FASCIA_F2,
-    PUN_FASCIA_F3,
-    PUN_FASCIA_F23,
-    PUN_FASCIA_MONO,
 )
 
 _LOGGER = logging.getLogger(__name__)
