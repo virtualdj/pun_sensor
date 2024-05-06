@@ -255,12 +255,15 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
                 # Calcola le statistiche
                 mono.append(prezzo)
-                if fascia == 3:
-                    f3.append(prezzo)
-                elif fascia == 2:
-                    f2.append(prezzo)
-                elif fascia == 1:
-                    f1.append(prezzo)
+                match fascia:
+                    case 3:
+                        f3.append(prezzo)
+                    case 2:
+                        f2.append(prezzo)
+                    case 1:
+                        f1.append(prezzo)
+                    case _:
+                        pass
 
         # Salva i risultati nel coordinator
         self.orari[PUN_FASCIA_MONO] = len(mono)
