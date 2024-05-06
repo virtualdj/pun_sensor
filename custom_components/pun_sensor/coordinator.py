@@ -89,8 +89,11 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         if (not self.actual_data_only) and (date_end.day < 4):
             date_start = date_start - timedelta(days=3)
 
+        start_date_param = str(date_start).replace("-", "")
+        end_date_param = str(date_end).replace("-", "")
+
         # URL del sito Mercato elettrico
-        download_url = f"https://gme.mercatoelettrico.org/DesktopModules/GmeDownload/API/ExcelDownload/downloadzipfile?DataInizio={date_start}&DataFine={date_end}&Date={date_end}&Mercato=MGP&Settore=Prezzi&FiltroDate=InizioFine"
+        download_url = f"https://gme.mercatoelettrico.org/DesktopModules/GmeDownload/API/ExcelDownload/downloadzipfile?DataInizio={start_date_param}&DataFine={end_date_param}&Date={end_date_param}&Mercato=MGP&Settore=Prezzi&FiltroDate=InizioFine"
 
         # imposta gli header della richiesta
         heads = {
