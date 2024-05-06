@@ -111,12 +111,25 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Effettua il download dello ZIP con i file XML
         _LOGGER.debug("Inizio download file ZIP con XML.")
         async with self.session.get(download_url, headers=heads) as response:
-            # Scompatta lo ZIP in memoria
-            try:
-                archive = zipfile.ZipFile(io.BytesIO(await response.read()))
-            except (zipfile.BadZipfile, IOError) as e:  # not a zip:
-                # Esce perché l'output non è uno ZIP
-                raise UpdateFailed("Archivio ZIP scaricato dal sito non valido.") from e
+            # aspetta la request
+            bytes_response = await response.read()
+            if response.status == 200:
+                # la richiesta e' andata a buon fine
+                try:
+                    archive = zipfile.ZipFile(io.BytesIO(bytes_response), "r")
+                except (zipfile.BadZipfile, OSError) as e:  # not a zip:
+                    # Esce perché l'output non è uno ZIP
+                    _LOGGER.error(
+                        "Error failed download. url %s, length %s, response %s",
+                        download_url,
+                        response.content_length,
+                        response.status,
+                    )
+                    raise UpdateFailed(
+                        "Archivio ZIP scaricato dal sito non valido."
+                    ) from e
+            else:
+                _LOGGER.error("Request Failed with code %s", response.status)
 
         # Mostra i file nell'archivio
         _LOGGER.debug(
