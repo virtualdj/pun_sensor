@@ -26,7 +26,7 @@ def get_fascia_for_xml(data: date, festivo: bool, ora: int) -> int:
     if ora == 7 or 19 <= ora < 23:
         return 2
     # l'ora massima e' 23 poi resettiamo a 0 quindi si puo semplificare
-    if 23 <= ora < 7:
+    if 23 >= ora < 7:
         return 3
     return 1
 
@@ -88,7 +88,7 @@ def get_fascia(dataora: datetime) -> Tuple[int, datetime]:
                     # Prossima fascia: alle 23 dello stesso giorno
                     prossima = get_next_date(dataora, 23)
 
-            elif 23 <= dataora.hour < 7:
+            elif 23 >= dataora.hour < 7:
                 # Lunedì-venerdì dalle 23 alle 7 del giorno dopo
                 fascia = 3
 
