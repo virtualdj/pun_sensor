@@ -58,11 +58,11 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry,
     async_add_entities(entities, update_before_add=False)
     
 
-def fmt_float(num: float):
+def fmt_float(num: float) -> str:
     """Formatta adeguatamente il numero decimale"""
     if has_suggested_display_precision:
-        return num
-    
+        return str(num)
+
     # In versioni precedenti di Home Assistant che non supportano
     # l'attributo 'suggested_display_precision' restituisce il numero
     # decimale già adeguatamente formattato come stringa
@@ -90,7 +90,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         elif (self.tipo == PUN_FASCIA_F23):
             self.entity_id = ENTITY_ID_FORMAT.format('pun_fascia_f23')
         else:
-            self.entity_id = None
+            self.entity_id = "None"
         self._attr_unique_id = self.entity_id
         self._attr_has_entity_name = True
 
@@ -167,14 +167,14 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         elif (self.tipo == PUN_FASCIA_F23):
             return "PUN fascia F23"
         else:
-            return None
+            return "None"
 
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Restituisce gli attributi di stato"""
         if has_suggested_display_precision:
-            return None
-        
+            return {}
+
         # Nelle versioni precedenti di Home Assistant
         # restituisce un valore arrotondato come attributo
         state_attr = {
@@ -220,7 +220,7 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
         elif (self.coordinator.fascia_corrente == 1):
             return "F1"
         else:
-            return None
+            return "None"
 
     @property
     def icon(self) -> str:
@@ -329,8 +329,8 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
     def extra_state_attributes(self) -> Dict[str, Any]:
         """Restituisce gli attributi di stato"""
         if has_suggested_display_precision:
-            return None
-        
+            return {}
+
         # Nelle versioni precedenti di Home Assistant
         # restituisce un valore arrotondato come attributo
         state_attr = {
