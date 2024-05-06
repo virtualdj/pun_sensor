@@ -132,10 +132,10 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                 _LOGGER.error("Request Failed with code %s", response.status)
 
         # Mostra i file nell'archivio
-        _LOGGER.debug(
-            f"{ len(archive.namelist()) } file trovati nell'archivio ("
-            + ", ".join(str(fn) for fn in archive.namelist())
-            + ")."
+        _LOGGER.info(
+            "%s file trovati nell'archivio (%s)",
+            len(archive.namelist()),
+            ", ".join(str(fn) for fn in archive.namelist()),
         )
 
         # Carica le festività
