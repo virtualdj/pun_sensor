@@ -1,34 +1,34 @@
+from typing import Any, Dict
+
+from awesomeversion.awesomeversion import AwesomeVersion
 from homeassistant.components.sensor import (
     ENTITY_ID_FORMAT,
     SensorEntity,
-    SensorStateClass,
-    SensorDeviceClass
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CURRENCY_EURO, UnitOfEnergy
+from homeassistant.const import __version__ as HA_VERSION
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import (
+    ExtraStoredData,
+    RestoredExtraData,
+    RestoreEntity,
+)
 from homeassistant.helpers.typing import DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.helpers.restore_state import (
-    RestoreEntity,
-    ExtraStoredData,
-    RestoredExtraData
-)
-from typing import Any, Dict
 
 from . import PUNDataUpdateCoordinator
 from .const import (
     DOMAIN,
-    PUN_FASCIA_MONO,
-    PUN_FASCIA_F23,
     PUN_FASCIA_F1,
     PUN_FASCIA_F2,
     PUN_FASCIA_F3,
+    PUN_FASCIA_F23,
+    PUN_FASCIA_MONO,
 )
 
-from awesomeversion.awesomeversion import AwesomeVersion
-from homeassistant.const import __version__ as HA_VERSION
-from homeassistant.const import CURRENCY_EURO, UnitOfEnergy
 ATTR_ROUNDED_DECIMALS = "rounded_decimals"
 
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry,
