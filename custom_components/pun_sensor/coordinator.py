@@ -97,16 +97,10 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # imposta gli header della richiesta
         heads = {
-            "accept": "application/json, text/plain, */*",
-            "accept-language": "en-US,en;q=0.9",
-            "cache-control": "no-cache",
             "moduleid": "12103",
-            "pragma": "no-cache",
-            "priority": "u=1, i",
             "referrer": "https://gme.mercatoelettrico.org/en-us/Home/Results/Electricity/MGP/Download?valore=Prezzi",
-            "sec-ch-ua": '"Not-A.Brand";v="99", "Chromium";v="124"',
             "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Windows"',
+            "sec-ch-ua-platform": "Windows",
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-origin",
