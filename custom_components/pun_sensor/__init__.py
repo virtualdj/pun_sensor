@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 import xml.etree.ElementTree as et
 from typing import Tuple
 from functools import partial
+from utils import get_fascia, get_fascia_for_xml
 
 from aiohttp import ClientSession
 from homeassistant.core import HomeAssistant
@@ -377,110 +378,10 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.schedule_token = None
 
         # Schedula la prossima esecuzione
-        self.schedule_token = async_track_point_in_time(self.hass, self.update_pun, next_update_pun)
-        _LOGGER.debug('Prossimo aggiornamento web: %s', next_update_pun.strftime('%d/%m/%Y %H:%M:%S %z'))
-
-def get_fascia_for_xml(data, festivo, ora) -> int:
-    """Restituisce il numero di fascia oraria di un determinato giorno/ora"""
-    #F1 = lu-ve 8-19
-    #F2 = lu-ve 7-8, lu-ve 19-23, sa 7-23
-    #F3 = lu-sa 0-7, lu-sa 23-24, do, festivi
-    if festivo or (data.weekday() == 6):
-        # Festivi e domeniche
-        return 3
-    elif (data.weekday() == 5):
-        # Sabato
-        if (ora >= 7) and (ora < 23):
-            return 2
-        else:
-            return 3
-    else:
-        # Altri giorni della settimana
-        if (ora == 7) or ((ora >= 19) and (ora < 23)):
-            return 2
-        elif (ora == 23) or ((ora >= 0) and (ora < 7)):
-            return 3
-    return 1
-
-def get_fascia(dataora: datetime) -> Tuple[int, datetime]:
-    """Restituisce la fascia della data/ora indicata (o quella corrente) e la data del prossimo cambiamento"""
-
-    # Verifica se la data corrente è un giorno con festività
-    festivo = dataora in holidays.IT()
-    
-    # Identifica la fascia corrente
-    # F1 = lu-ve 8-19
-    # F2 = lu-ve 7-8, lu-ve 19-23, sa 7-23
-    # F3 = lu-sa 0-7, lu-sa 23-24, do, festivi
-    if festivo or (dataora.weekday() == 6):
-        # Festivi e domeniche
-        fascia = 3
-
-        # Prossima fascia: alle 7 di un giorno non domenica o festività
-        prossima = (dataora + timedelta(days=1)).replace(hour=7,
-                        minute=0, second=0, microsecond=0)
-        while ((prossima in holidays.IT()) or (prossima.weekday() == 6)):
-            prossima += timedelta(days=1)
-
-    elif (dataora.weekday() == 5):
-        # Sabato
-        if (dataora.hour >= 7) and (dataora.hour < 23):
-            # Sabato dalle 7 alle 23
-            fascia = 2
-
-            # Prossima fascia: alle 23 dello stesso giorno
-            prossima = dataora.replace(hour=23,
-                            minute=0, second=0, microsecond=0)
-        elif (dataora.hour < 7):
-            # Sabato tra le 0 e le 7
-            fascia = 3
-
-            # Prossima fascia: alle 7 dello stesso giorno
-            prossima = dataora.replace(hour=7,
-                            minute=0, second=0, microsecond=0)
-        else:
-            # Sabato dopo le 23
-            fascia = 3
-
-            # Prossima fascia: alle 7 di un giorno non domenica o festività
-            prossima = (dataora + timedelta(days=1)).replace(hour=7,
-                        minute=0, second=0, microsecond=0)
-            while ((prossima in holidays.IT()) or (prossima.weekday() == 6)):
-                prossima += timedelta(days=1)
-    else:
-        # Altri giorni della settimana
-        if (dataora.hour == 7):
-            # Lunedì-venerdì dalle 7 alle 8
-            fascia = 2
-
-            # Prossima fascia: alle 8 dello stesso giorno
-            prossima = dataora.replace(hour=8,
-                            minute=0, second=0, microsecond=0)
-
-        elif ((dataora.hour >= 19) and (dataora.hour < 23)):
-            # Lunedì-venerdì dalle 19 alle 23
-            fascia = 2
-
-            # Prossima fascia: alle 23 dello stesso giorno
-            prossima = dataora.replace(hour=23,
-                            minute=0, second=0, microsecond=0)
-
-        elif ((dataora.hour == 23) or ((dataora.hour >= 0) and (dataora.hour < 7))):
-            # Lunedì-venerdì dalle 23 alle 24 e dalle 0 alle 7
-            fascia = 3
-
-            # Prossima fascia: alle 7 di un giorno non domenica o festività
-            prossima = dataora.replace(hour=7,
-                        minute=0, second=0, microsecond=0)
-            while ((prossima <= dataora) or (prossima in holidays.IT()) or (prossima.weekday() == 6)):
-                prossima += timedelta(days=1)
-
-        else:
-            # Lunedì-venerdì dalle 8 alle 19
-            fascia = 1
-
-            # Prossima fascia: alle 19 dello stesso giorno
-            prossima = dataora.replace(hour=19,
-                            minute=0, second=0, microsecond=0)
-    
-    return fascia, prossima
+        self.schedule_token = async_track_point_in_time(
+            self.hass, self.update_pun, next_update_pun
+        )
+        _LOGGER.debug(
+            "Prossimo aggiornamento web: %s",
+            next_update_pun.strftime("%d/%m/%Y %H:%M:%S %z"),
+        )
