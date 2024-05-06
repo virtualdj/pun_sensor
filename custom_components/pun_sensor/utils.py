@@ -1,6 +1,9 @@
+import logging
 from datetime import date, datetime, timedelta
 from typing import Tuple
 import holidays
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def get_fascia_for_xml(data: date, festivo: bool, ora: int) -> int:
