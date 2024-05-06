@@ -87,54 +87,36 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             date_start = date_start - timedelta(days=3)
 
         # URL del sito Mercato elettrico
-        LOGIN_URL = "https://www.mercatoelettrico.org/It/Tools/Accessodati.aspx?ReturnUrl=%2fIt%2fdownload%2fDownloadDati.aspx%3fval%3dMGP_Prezzi&val=MGP_Prezzi"
-        DOWNLOAD_URL = "https://www.mercatoelettrico.org/It/download/DownloadDati.aspx?val=MGP_Prezzi"
+        download_url = f"https://gme.mercatoelettrico.org/DesktopModules/GmeDownload/API/ExcelDownload/downloadzipfile?DataInizio={date_start}&DataFine={date_end}&Date={date_end}&Mercato=MGP&Settore=Prezzi&FiltroDate=InizioFine"
 
-        # Apre la pagina per generare i cookie e i campi nascosti
-        _LOGGER.debug("Connessione a URL login.")
-        async with self.session.get(LOGIN_URL) as response:
-            soup = await self.hass.async_add_executor_job(
-                partial(BeautifulSoup, await response.read(), features="html.parser")
-            )
-
-        # Recupera i campi nascosti __VIEWSTATE e __EVENTVALIDATION per la prossima richiesta
-        viewstate = soup.find("input", {"name": "__VIEWSTATE"})["value"]
-        eventvalidation = soup.find("input", {"name": "__EVENTVALIDATION"})["value"]
-        login_payload = {
-            "ctl00$ContentPlaceHolder1$CBAccetto1": "on",
-            "ctl00$ContentPlaceHolder1$CBAccetto2": "on",
-            "ctl00$ContentPlaceHolder1$Button1": "Accetto",
-            "__VIEWSTATE": viewstate,
-            "__EVENTVALIDATION": eventvalidation,
-        }
-
-        # Effettua il login (che se corretto porta alla pagina di download XML grazie al 'ReturnUrl')
-        _LOGGER.debug("Invio credenziali a URL login.")
-        async with self.session.post(LOGIN_URL, data=login_payload) as response:
-            soup = await self.hass.async_add_executor_job(
-                partial(BeautifulSoup, await response.read(), features="html.parser")
-            )
-
-        # Recupera i campi nascosti __VIEWSTATE per la prossima richiesta
-        viewstate = soup.find("input", {"name": "__VIEWSTATE"})["value"]
-        data_request_payload = {
-            "ctl00$ContentPlaceHolder1$tbDataStart": date_start.strftime("%d/%m/%Y"),
-            "ctl00$ContentPlaceHolder1$tbDataStop": date_end.strftime("%d/%m/%Y"),
-            "ctl00$ContentPlaceHolder1$btnScarica": "scarica+file+xml+compresso",
-            "__VIEWSTATE": viewstate,
+        # imposta gli header della richiesta
+        heads = {
+            "accept": "application/json, text/plain, */*",
+            "accept-language": "en-US,en;q=0.9",
+            "cache-control": "no-cache",
+            "moduleid": "12103",
+            "pragma": "no-cache",
+            "priority": "u=1, i",
+            "referrer": "https://gme.mercatoelettrico.org/en-us/Home/Results/Electricity/MGP/Download?valore=Prezzi",
+            "sec-ch-ua": '"Not-A.Brand";v="99", "Chromium";v="124"',
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": '"Windows"',
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-origin",
+            "tabid": "1749",
+            "userid": "-1",
         }
 
         # Effettua il download dello ZIP con i file XML
         _LOGGER.debug("Inizio download file ZIP con XML.")
-        async with self.session.post(
-            DOWNLOAD_URL, data=data_request_payload
-        ) as response:
+        async with self.session.get(download_url, headers=heads) as response:
             # Scompatta lo ZIP in memoria
             try:
                 archive = zipfile.ZipFile(io.BytesIO(await response.read()))
-            except:
+            except (zipfile.BadZipfile, IOError) as e:  # not a zip:
                 # Esce perché l'output non è uno ZIP
-                raise UpdateFailed("Archivio ZIP scaricato dal sito non valido.")
+                raise UpdateFailed("Archivio ZIP scaricato dal sito non valido.") from e
 
         # Mostra i file nell'archivio
         _LOGGER.debug(
