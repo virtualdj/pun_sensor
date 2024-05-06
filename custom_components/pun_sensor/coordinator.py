@@ -42,6 +42,8 @@ tz_pun = ZoneInfo("Europe/Rome")
 
 
 class PUNDataUpdateCoordinator(DataUpdateCoordinator):
+    """Data coordinator"""
+
     session: ClientSession
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry) -> None:
@@ -143,11 +145,15 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             xml_root = xml_tree.getroot()
 
             # Estrae la data dal primo elemento (sarà identica per gli altri)
-            dat_string = xml_root.find("Prezzi").find("Data").text  # YYYYMMDD
+            dat_string = (
+                xml_root.find("Prezzi").find("Data").text
+            )  # YYYYMMDD # type: ignore
 
             # Converte la stringa giorno in data
             dat_date = date(
-                int(dat_string[0:4]), int(dat_string[4:6]), int(dat_string[6:8])
+                int(dat_string[0:4]),  # type: ignore
+                int(dat_string[4:6]),  # type: ignore
+                int(dat_string[6:8]),  # type: ignore
             )
 
             # Verifica la festività
@@ -156,11 +162,11 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Estrae le rimanenti informazioni
             for prezzi in xml_root.iter("Prezzi"):
                 # Estrae l'ora dall'XML
-                ora = int(prezzi.find("Ora").text) - 1  # 1..24
+                ora = int(prezzi.find("Ora").text) - 1  # 1..24 # type: ignore
 
                 # Estrae il prezzo PUN dall'XML in un float
-                prezzo_string = prezzi.find("PUN").text
-                prezzo_string = prezzo_string.replace(".", "").replace(",", ".")
+                prezzo_string = prezzi.find("PUN").text  # type: ignore
+                prezzo_string = prezzo_string.replace(".", "").replace(",", ".")  # type: ignore
                 prezzo = float(prezzo_string) / 1000
 
                 # Estrae la fascia oraria
@@ -195,7 +201,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Calcola la fascia F23 (a partire da F2 ed F3)
         # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:
         # https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806
-        if self.orari[PUN_FASCIA_F2] > 0 and self.orari[PUN_FASCIA_F3] > 0:
+        if (self.orari[PUN_FASCIA_F2] and self.orari[PUN_FASCIA_F3]) > 0:
             # Esistono dati sia per F2 che per F3
             self.orari[PUN_FASCIA_F23] = (
                 self.orari[PUN_FASCIA_F2] + self.orari[PUN_FASCIA_F3]
@@ -244,7 +250,6 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def update_pun(self, now=None):
         """Aggiorna i prezzi PUN da Internet (funziona solo se schedulata)"""
-
         # Aggiorna i dati da web
         try:
             # Esegue l'aggiornamento
@@ -252,6 +257,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
             # Se non ci sono eccezioni, ha avuto successo
             self.web_retries = 0
+        # pylint: disable=W0718
+        # Broad Except catching
         except Exception as e:
             # Errori durante l'esecuzione dell'aggiornamento, riprova dopo
             if self.web_retries == 0:
@@ -309,7 +316,6 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
             # Esce e attende la prossima schedulazione
             return
-
         # Notifica che i dati PUN sono stati aggiornati con successo
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
 
