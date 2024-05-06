@@ -1,23 +1,19 @@
 """Prezzi PUN del mese"""
 
-import logging
 from datetime import timedelta
+import logging
 from zoneinfo import ZoneInfo
 
 import holidays
 
-import homeassistant.util.dt as dt_util
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_call_later, async_track_point_in_time
 from homeassistant.setup import SetupPhases, async_pause_setup
-from .coordinator import PUNDataUpdateCoordinator
+import homeassistant.util.dt as dt_util
 
-from .const import (
-    CONF_ACTUAL_DATA_ONLY,
-    CONF_SCAN_HOUR,
-    DOMAIN,
-)
+from .const import CONF_ACTUAL_DATA_ONLY, CONF_SCAN_HOUR, DOMAIN
+from .coordinator import PUNDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 

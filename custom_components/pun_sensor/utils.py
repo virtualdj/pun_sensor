@@ -1,6 +1,5 @@
-import logging
 from datetime import date, datetime, timedelta
-from typing import Tuple
+import logging
 import holidays
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,8 +30,8 @@ def get_fascia_for_xml(data: date, festivo: bool, ora: int) -> int:
     return 1
 
 
-def get_fascia(dataora: datetime) -> Tuple[int, datetime]:
-    """Restituisce la fascia della data/ora indicata (o quella corrente) e la data del prossimo cambiamento"""
+def get_fascia(dataora: datetime) -> tuple[int, datetime]:
+    """Restituisce la fascia della data/ora indicata (o quella corrente) e la data del prossimo cambiamento."""
 
     # Verifica se la data corrente è un giorno con festività
     festivo = dataora in holidays.IT()
@@ -46,14 +45,14 @@ def get_fascia(dataora: datetime) -> Tuple[int, datetime]:
         fascia = 3
 
         # Prossima fascia: alle 7 di un giorno non domenica o festività
-        prossima = get_next_date(dataora, 7, 1, False)
+        prossima = get_next_date(dataora, 7, 1, True)
 
         return fascia, prossima
     match dataora.weekday():
         # Domenica
         case 6:
             fascia = 3
-            prossima = get_next_date(dataora, 7, 1, False)
+            prossima = get_next_date(dataora, 7, 1, True)
 
         # Sabato
         case 5:
@@ -73,7 +72,7 @@ def get_fascia(dataora: datetime) -> Tuple[int, datetime]:
                 # Sabato dopo le 23
                 fascia = 3
                 # Prossima fascia: alle 7 di un giorno non domenica o festività
-                prossima = get_next_date(dataora, 7, 1, False)
+                prossima = get_next_date(dataora, 7, 1, True)
 
         # Altri giorni della settimana
         case _:
@@ -98,7 +97,7 @@ def get_fascia(dataora: datetime) -> Tuple[int, datetime]:
                     prossima = get_next_date(dataora, 7)
                 else:
                     # Prossima fascia: alle 7 di un giorno non domenica o festività
-                    prossima = get_next_date(dataora, 7, 1, False)
+                    prossima = get_next_date(dataora, 7, 1, True)
 
             else:
                 # Lunedì-venerdì dalle 8 alle 19
@@ -110,26 +109,26 @@ def get_fascia(dataora: datetime) -> Tuple[int, datetime]:
 
 
 def get_next_date(
-    dataora: datetime, ora: int, offset: int = 0, festivo: bool = True
+    dataora: datetime, ora: int, offset: int = 0, feriale: bool = False
 ) -> datetime:
-    """
-    Ritorna una datetime in base ai parametri
+    """Ritorna una datetime in base ai parametri.
 
-    Parameters:
+    Args:
     dataora (datetime): passa la data di riferimento.
     ora (int): l'ora a cui impostare la data.
-    offset (int) = 0: controlla il timedelta in days rispetto a dataora.
-    festivo (bool): se False ritorna sempre una giornata lavorativa (no festivi, domeniche)
+    offset (int = 0) : controlla il timedelta in days rispetto a dataora.
+    feriale (bool = False): se True ritorna sempre una giornata lavorativa (no festivi, domeniche)
 
     Returns:
         prossima (datetime): L'istanza di datetime corrispondente.
+
     """
 
     prossima = (dataora + timedelta(days=offset)).replace(
         hour=ora, minute=0, second=0, microsecond=0
     )
 
-    if not festivo:
+    if feriale:
         while (prossima in holidays.IT()) or (prossima.weekday() == 6):
             prossima += timedelta(days=1)
 

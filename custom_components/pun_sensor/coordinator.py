@@ -1,27 +1,24 @@
 """Coordinator for pun_sensor"""
 
 # pylint: disable=W0613
+from datetime import date, timedelta
 import io
 import logging
-import xml.etree.ElementTree as et
-import zipfile
-from datetime import date, timedelta
 from statistics import mean
+import zipfile
 from zoneinfo import ZoneInfo
 
-import holidays
-import homeassistant.util.dt as dt_util
 from aiohttp import ClientSession
+import defusedxml.ElementTree as et
+import holidays
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_point_in_time
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+import homeassistant.util.dt as dt_util
 
-from .utils import get_fascia, get_fascia_for_xml
 from .const import (
     CONF_ACTUAL_DATA_ONLY,
     CONF_SCAN_HOUR,
@@ -35,6 +32,7 @@ from .const import (
     PUN_FASCIA_F23,
     PUN_FASCIA_MONO,
 )
+from .utils import get_fascia, get_fascia_for_xml
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -88,21 +86,18 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         if (not self.actual_data_only) and (date_end.day < 4):
             date_start = date_start - timedelta(days=3)
 
+        start_date_param = str(date_start).replace("-", "")
+        end_date_param = str(date_end).replace("-", "")
+
         # URL del sito Mercato elettrico
-        download_url = f"https://gme.mercatoelettrico.org/DesktopModules/GmeDownload/API/ExcelDownload/downloadzipfile?DataInizio={date_start}&DataFine={date_end}&Date={date_end}&Mercato=MGP&Settore=Prezzi&FiltroDate=InizioFine"
+        download_url = f"https://gme.mercatoelettrico.org/DesktopModules/GmeDownload/API/ExcelDownload/downloadzipfile?DataInizio={start_date_param}&DataFine={end_date_param}&Date={end_date_param}&Mercato=MGP&Settore=Prezzi&FiltroDate=InizioFine"
 
         # imposta gli header della richiesta
         heads = {
-            "accept": "application/json, text/plain, */*",
-            "accept-language": "en-US,en;q=0.9",
-            "cache-control": "no-cache",
             "moduleid": "12103",
-            "pragma": "no-cache",
-            "priority": "u=1, i",
             "referrer": "https://gme.mercatoelettrico.org/en-us/Home/Results/Electricity/MGP/Download?valore=Prezzi",
-            "sec-ch-ua": '"Not-A.Brand";v="99", "Chromium";v="124"',
             "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Windows"',
+            "sec-ch-ua-platform": "Windows",
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-origin",
@@ -113,18 +108,31 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Effettua il download dello ZIP con i file XML
         _LOGGER.debug("Inizio download file ZIP con XML.")
         async with self.session.get(download_url, headers=heads) as response:
-            # Scompatta lo ZIP in memoria
-            try:
-                archive = zipfile.ZipFile(io.BytesIO(await response.read()))
-            except (zipfile.BadZipfile, IOError) as e:  # not a zip:
-                # Esce perché l'output non è uno ZIP
-                raise UpdateFailed("Archivio ZIP scaricato dal sito non valido.") from e
+            # aspetta la request
+            bytes_response = await response.read()
+            if response.status == 200:
+                # la richiesta e' andata a buon fine
+                try:
+                    archive = zipfile.ZipFile(io.BytesIO(bytes_response), "r")
+                except (zipfile.BadZipfile, OSError) as e:  # not a zip:
+                    # Esce perché l'output non è uno ZIP
+                    _LOGGER.error(
+                        "Error failed download. url %s, length %s, response %s",
+                        download_url,
+                        response.content_length,
+                        response.status,
+                    )
+                    raise UpdateFailed(
+                        "Archivio ZIP scaricato dal sito non valido."
+                    ) from e
+            else:
+                _LOGGER.error("Request Failed with code %s", response.status)
 
         # Mostra i file nell'archivio
-        _LOGGER.debug(
-            f"{ len(archive.namelist()) } file trovati nell'archivio ("
-            + ", ".join(str(fn) for fn in archive.namelist())
-            + ")."
+        _LOGGER.info(
+            "%s file trovati nell'archivio (%s)",
+            len(archive.namelist()),
+            ", ".join(str(fn) for fn in archive.namelist()),
         )
 
         # Carica le festività
