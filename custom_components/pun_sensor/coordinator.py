@@ -195,7 +195,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Calcola la fascia F23 (a partire da F2 ed F3)
         # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:
         # https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806
-        if self.orari[PUN_FASCIA_F2] > 0 and self.orari[PUN_FASCIA_F3] > 0:
+        if (self.orari[PUN_FASCIA_F2] and self.orari[PUN_FASCIA_F3]) > 0:
             # Esistono dati sia per F2 che per F3
             self.orari[PUN_FASCIA_F23] = (
                 self.orari[PUN_FASCIA_F2] + self.orari[PUN_FASCIA_F3]
