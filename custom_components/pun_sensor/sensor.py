@@ -1,14 +1,18 @@
-from typing import Any, Dict
+"""pun sensor entity"""
+
+# pylint: disable=W0613
+from typing import Any
 
 from awesomeversion.awesomeversion import AwesomeVersion
+
 from homeassistant.components.sensor import (
     ENTITY_ID_FORMAT,
+    SensorDeviceClass,
     SensorEntity,
+    SensorStateClass,
 )
-from homeassistant.components.sensor.const import SensorDeviceClass, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CURRENCY_EURO, UnitOfEnergy
-from homeassistant.const import __version__ as HA_VERSION
+from homeassistant.const import CURRENCY_EURO, UnitOfEnergy, __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import (
