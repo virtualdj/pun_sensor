@@ -68,16 +68,8 @@ async def async_setup_entry(
     async_add_entities(entities, update_before_add=False)
 
 
-
-def decode_fascia(fascia: int) -> str | None:
-    if fascia == 3:
-        return "F3"
-    elif fascia == 2:
-        return "F2"
-    elif fascia == 1:
-        return "F1"
-    else:
-        return None
+def decode_fascia(fascia: int | None) -> str | None:
+    return f"F{fascia}"
 
 
 def fmt_float(num: float) -> str:
@@ -242,13 +234,12 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
         """Restituisce la fascia corrente come stato"""
         return decode_fascia(self.coordinator.fascia_corrente)
 
-    @override
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         return {
-            'fascia_successiva': decode_fascia(self.coordinator.fascia_successiva),
-            'inizio_fascia_successiva': self.coordinator.prossimo_cambio_fascia,
-            'termine_fascia_successiva': self.coordinator.termine_prossima_fascia
+            "fascia_successiva": decode_fascia(self.coordinator.fascia_successiva),
+            "inizio_fascia_successiva": self.coordinator.prossimo_cambio_fascia,
+            "termine_fascia_successiva": self.coordinator.termine_prossima_fascia,
         }
 
     @property

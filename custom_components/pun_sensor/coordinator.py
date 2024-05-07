@@ -1,15 +1,15 @@
 """Coordinator for pun_sensor"""
 
 # pylint: disable=W0613
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import io
 import logging
 from statistics import mean
 import zipfile
 from zoneinfo import ZoneInfo
 
-from aiohttp import ClientSession
-import defusedxml.ElementTree as et
+from aiohttp import ClientSession, ServerConnectionError
+
 import holidays
 
 from homeassistant.config_entries import ConfigEntry
@@ -68,7 +68,11 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.schedule_token = None
         self.pun = [0.0, 0.0, 0.0, 0.0, 0.0]
         self.orari = [0, 0, 0, 0, 0]
-        self.fascia_corrente = None
+        self.fascia_corrente: int | None = None
+        self.fascia_successiva: int | None = None
+        self.prossimo_cambio_fascia: datetime | None = None
+        self.termine_prossima_fascia: datetime | None = None
+
         _LOGGER.debug(
             "Coordinator inizializzato (con 'usa dati reali' = %s).",
             self.actual_data_only,
@@ -110,23 +114,27 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         async with self.session.get(download_url, headers=heads) as response:
             # aspetta la request
             bytes_response = await response.read()
-            if response.status == 200:
-                # la richiesta e' andata a buon fine
-                try:
-                    archive = zipfile.ZipFile(io.BytesIO(bytes_response), "r")
-                except (zipfile.BadZipfile, OSError) as e:  # not a zip:
-                    # Esce perché l'output non è uno ZIP
-                    _LOGGER.error(
-                        "Error failed download. url %s, length %s, response %s",
-                        download_url,
-                        response.content_length,
-                        response.status,
-                    )
-                    raise UpdateFailed(
-                        "Archivio ZIP scaricato dal sito non valido."
-                    ) from e
-            else:
+
+            # se la richiesta NON e' andata a buon fine ritorna l'errore subito
+            if response.status != 200:
                 _LOGGER.error("Request Failed with code %s", response.status)
+                raise ServerConnectionError(
+                    f"Request failed with error {response.status}"
+                )
+
+            # la richiesta e' andata a buon fine, tenta l'estrazione
+            try:
+                archive = zipfile.ZipFile(io.BytesIO(bytes_response), "r")
+
+            # Esce perché l'output non è uno ZIP, o ha un errore IO
+            except (zipfile.BadZipfile, OSError) as e:  # not a zip:
+                _LOGGER.error(
+                    "Error failed download. url %s, length %s, response %s",
+                    download_url,
+                    response.content_length,
+                    response.status,
+                )
+                raise UpdateFailed("Archivio ZIP scaricato dal sito non valido.") from e
 
         # Mostra i file nell'archivio
         _LOGGER.debug(
@@ -241,20 +249,29 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
         # Ottiene la fascia oraria corrente e il prossimo aggiornamento
-        self.fascia_corrente, next_update_fascia = get_fascia(
+        self.fascia_corrente, self.prossimo_cambio_fascia = get_fascia(
             dt_util.now(time_zone=tz_pun)
         )
+
+        # Calcola la fascia futura ri-applicando lo stesso algoritmo
+        self.fascia_successiva, self.termine_prossima_fascia = get_fascia(
+            self.prossimo_cambio_fascia
+        )
+
         _LOGGER.info(
-            "Nuova fascia corrente: F%s (prossima: %s)",
+            "Nuova fascia corrente: F%s (prossima: F%s)",
             self.fascia_corrente,
-            next_update_fascia.strftime("%a %d/%m/%Y %H:%M:%S %z"),
+            self.fascia_successiva,
+            self.prossimo_cambio_fascia.strftime("%a %d/%m/%Y %H:%M:%S %z"),
         )
 
         # Notifica che i dati sono stati aggiornati (fascia)
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_FASCIA})
 
         # Schedula la prossima esecuzione
-        async_track_point_in_time(self.hass, self.update_fascia, next_update_fascia)
+        async_track_point_in_time(
+            self.hass, self.update_fascia, self.prossimo_cambio_fascia
+        )
 
     async def update_pun(self, now=None):
         """Aggiorna i prezzi PUN da Internet (funziona solo se schedulata)"""
@@ -265,9 +282,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
             # Se non ci sono eccezioni, ha avuto successo
             self.web_retries = 0
-        # pylint: disable=W0718
-        # Broad Except catching
-        except Exception as e:
+        # errore nel fetch dei dati
+        except ServerConnectionError as e:
             # Errori durante l'esecuzione dell'aggiornamento, riprova dopo
             if self.web_retries == 0:
                 # Primo errore, riprova dopo 1 minuto
@@ -321,7 +337,36 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                     "Prossimo aggiornamento web: %s",
                     next_update_pun.strftime("%d/%m/%Y %H:%M:%S %z"),
                 )
+            # Esce e attende la prossima schedulazione
+            return
 
+        # pylint: disable=W0718
+        # Broad Except catching
+        # possibili errori: estrazione dei dati, file non zip.
+        # Non ha avuto errori nel download, da gestire diversamente, per ora schedula a domani
+        # #TODO Wrap XML extracion into try/catch to re-raise into something we can expect
+        except (Exception, UpdateFailed) as e:
+            # Giorno dopo
+            # Annulla eventuali schedulazioni attive
+            self.clean_tokens()
+
+            _LOGGER.error(
+                "Errore durante l'estrazione dei dati",
+                exc_info=e,
+            )
+
+            next_update_pun = get_next_date(
+                dt_util.now(time_zone=tz_pun), self.scan_hour, 1
+            )
+
+            self.schedule_token = async_track_point_in_time(
+                self.hass, self.update_pun, next_update_pun
+            )
+
+            _LOGGER.debug(
+                "Prossimo aggiornamento web: %s",
+                next_update_pun.strftime("%d/%m/%Y %H:%M:%S %z"),
+            )
             # Esce e attende la prossima schedulazione
             return
         # Notifica che i dati PUN sono stati aggiornati con successo
