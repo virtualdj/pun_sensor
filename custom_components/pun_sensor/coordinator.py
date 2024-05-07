@@ -1,7 +1,7 @@
 """Coordinator for pun_sensor"""
 
 # pylint: disable=W0613
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 import io
 import logging
 from statistics import mean
@@ -68,7 +68,11 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.schedule_token = None
         self.pun = [0.0, 0.0, 0.0, 0.0, 0.0]
         self.orari = [0, 0, 0, 0, 0]
-        self.fascia_corrente = None
+        self.fascia_corrente: int | None = None
+        self.fascia_successiva: int | None = None
+        self.prossimo_cambio_fascia: datetime | None = None
+        self.termine_prossima_fascia: datetime | None = None
+
         _LOGGER.debug(
             "Coordinator inizializzato (con 'usa dati reali' = %s).",
             self.actual_data_only,
@@ -241,20 +245,29 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
         # Ottiene la fascia oraria corrente e il prossimo aggiornamento
-        self.fascia_corrente, next_update_fascia = get_fascia(
+        self.fascia_corrente, self.prossimo_cambio_fascia = get_fascia(
             dt_util.now(time_zone=tz_pun)
         )
+
+        # Calcola la fascia futura ri-applicando lo stesso algoritmo
+        self.fascia_successiva, self.termine_prossima_fascia = get_fascia(
+            self.prossimo_cambio_fascia
+        )
+
         _LOGGER.info(
-            "Nuova fascia corrente: F%s (prossima: %s)",
+            "Nuova fascia corrente: F%s (prossima: F%s)",
             self.fascia_corrente,
-            next_update_fascia.strftime("%a %d/%m/%Y %H:%M:%S %z"),
+            self.fascia_successiva,
+            self.prossimo_cambio_fascia.strftime("%a %d/%m/%Y %H:%M:%S %z"),
         )
 
         # Notifica che i dati sono stati aggiornati (fascia)
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_FASCIA})
 
         # Schedula la prossima esecuzione
-        async_track_point_in_time(self.hass, self.update_fascia, next_update_fascia)
+        async_track_point_in_time(
+            self.hass, self.update_fascia, self.prossimo_cambio_fascia
+        )
 
     async def update_pun(self, now=None):
         """Aggiorna i prezzi PUN da Internet (funziona solo se schedulata)"""
