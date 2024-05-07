@@ -169,13 +169,9 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 
     @property
     def name(self) -> str:
-        """Restituisce il nome del sensore."""
-        if self.tipo == PUN_FASCIA_F3:
-            return "PUN fascia F3"
-        if self.tipo == PUN_FASCIA_F2:
-            return "PUN fascia F2"
-        if self.tipo == PUN_FASCIA_F1:
-            return "PUN fascia F1"
+        """Restituisce il nome del sensore"""
+        if self.tipo == [1, 2, 3]:
+            return f"PUN fascia F{self.tipo}"
         if self.tipo == PUN_FASCIA_MONO:
             return "PUN mono-orario"
         if self.tipo == PUN_FASCIA_F23:
@@ -224,13 +220,7 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
     @property
     def state(self) -> str:
         """Restituisce la fascia corrente come stato."""
-        if self.coordinator.fascia_corrente == 3:
-            return "F3"
-        if self.coordinator.fascia_corrente == 2:
-            return "F2"
-        if self.coordinator.fascia_corrente == 1:
-            return "F1"
-        return "None"
+        return f"F{self.coordinator.fascia_corrente}"
 
     @property
     def icon(self) -> str:
