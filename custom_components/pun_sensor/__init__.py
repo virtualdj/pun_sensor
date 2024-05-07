@@ -114,3 +114,4 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
         coordinator.schedule_token = async_call_later(
             coordinator.hass, timedelta(seconds=5), coordinator.update_pun
         )
+
