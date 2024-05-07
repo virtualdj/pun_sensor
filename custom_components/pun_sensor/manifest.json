@@ -12,5 +12,5 @@
   "loggers": ["pun_sensor"],
   "requirements": ["holidays", "bs4"],
   "single_config_entry": true,
-  "version": "0.7.0"
+  "version": "0.8.0"
 }
