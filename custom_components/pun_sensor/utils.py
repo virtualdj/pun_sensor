@@ -24,10 +24,9 @@ def get_fascia_for_xml(data: date, festivo: bool, ora: int) -> int:
     # Altri giorni della settimana
     if ora == 7 or 19 <= ora < 23:
         return 2
-    # l'ora massima e' 23 poi resettiamo a 0 quindi si puo semplificare
-    if 23 >= ora < 7:
-        return 3
-    return 1
+    if 8 <= ora < 19:
+        return 1
+    return 3
 
 
 def get_fascia(dataora: datetime) -> tuple[int, datetime]:
@@ -61,18 +60,17 @@ def get_fascia(dataora: datetime) -> tuple[int, datetime]:
                 fascia = 2
                 # Prossima fascia: alle 23 dello stesso giorno
                 prossima = get_next_date(dataora, 23)
-
-            elif dataora.hour < 7:
-                # Sabato tra le 0 e le 7
-                fascia = 3
-                # Prossima fascia: alle 7 dello stesso giorno
-                prossima = get_next_date(dataora, 7)
-
+            # abbiamo solo due fasce quindi facciamo solo il check per la prossima fascia
             else:
-                # Sabato dopo le 23
+                # Sabato dopo le 23 e prima delle 7
                 fascia = 3
-                # Prossima fascia: alle 7 di un giorno non domenica o festività
-                prossima = get_next_date(dataora, 7, 1, True)
+
+                if dataora.hour < 7:
+                    # Prossima fascia: alle 7 dello stesso giorno
+                    prossima = get_next_date(dataora, 7)
+                else:
+                    # Prossima fascia: alle 7 di un giorno non domenica o festività
+                    prossima = get_next_date(dataora, 7, 1, True)
 
         # Altri giorni della settimana
         case _:
@@ -87,7 +85,13 @@ def get_fascia(dataora: datetime) -> tuple[int, datetime]:
                     # Prossima fascia: alle 23 dello stesso giorno
                     prossima = get_next_date(dataora, 23)
 
-            elif 23 >= dataora.hour < 7:
+            elif 8 <= dataora.hour < 19:
+                # Lunedì-venerdì dalle 8 alle 19
+                fascia = 1
+                # Prossima fascia: alle 19 dello stesso giorno
+                prossima = get_next_date(dataora, 19)
+
+            else:
                 # Lunedì-venerdì dalle 23 alle 7 del giorno dopo
                 fascia = 3
 
@@ -98,12 +102,6 @@ def get_fascia(dataora: datetime) -> tuple[int, datetime]:
                 else:
                     # Prossima fascia: alle 7 di un giorno non domenica o festività
                     prossima = get_next_date(dataora, 7, 1, True)
-
-            else:
-                # Lunedì-venerdì dalle 8 alle 19
-                fascia = 1
-                # Prossima fascia: alle 19 dello stesso giorno
-                prossima = get_next_date(dataora, 19)
 
     return fascia, prossima
 
