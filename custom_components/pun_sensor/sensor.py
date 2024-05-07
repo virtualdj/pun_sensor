@@ -170,7 +170,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     @property
     def name(self) -> str:
         """Restituisce il nome del sensore"""
-        if self.tipo == [1, 2, 3]:
+        if self.tipo in [1, 2, 3]:
             return f"PUN fascia F{self.tipo}"
         if self.tipo == PUN_FASCIA_MONO:
             return "PUN mono-orario"
