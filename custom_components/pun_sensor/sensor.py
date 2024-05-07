@@ -86,18 +86,20 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         self.tipo = tipo
 
         # ID univoco sensore basato su un nome fisso
-        if self.tipo == PUN_FASCIA_F3:
-            self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f3")
-        elif self.tipo == PUN_FASCIA_F2:
-            self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f2")
-        elif self.tipo == PUN_FASCIA_F1:
-            self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f1")
-        elif self.tipo == PUN_FASCIA_MONO:
-            self.entity_id = ENTITY_ID_FORMAT.format("pun_mono_orario")
-        elif self.tipo == PUN_FASCIA_F23:
-            self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f23")
-        else:
-            self.entity_id = "None"
+        # TODO Switch to Enum interface for fasce
+        match self.tipo:
+            case 0:
+                self.entity_id = ENTITY_ID_FORMAT.format("pun_mono_orario")
+            case 1:
+                self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f1")
+            case 2:
+                self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f2")
+            case 3:
+                self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f3")
+            case 4:
+                self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f23")
+            case _:
+                self.entity_id = "none"
         self._attr_unique_id = self.entity_id
         self._attr_has_entity_name = True
 
