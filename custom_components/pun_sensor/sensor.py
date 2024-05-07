@@ -1,7 +1,7 @@
 """pun sensor entity"""
 
 # pylint: disable=W0613
-from typing import Any, override
+from typing import Any
 
 from awesomeversion.awesomeversion import AwesomeVersion
 
@@ -236,7 +236,6 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
         """Restituisce la fascia corrente come stato"""
         return decode_fascia(self.coordinator.fascia_corrente)
 
-    @override
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         return {
