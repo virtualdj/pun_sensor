@@ -1,6 +1,5 @@
-import logging
 from datetime import date, datetime, timedelta
-from typing import Tuple
+import logging
 import holidays
 
 _LOGGER = logging.getLogger(__name__)

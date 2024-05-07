@@ -1,28 +1,24 @@
 """Coordinator for pun_sensor"""
 
 # pylint: disable=W0613
+from datetime import date, timedelta
 import io
 import logging
-
-import zipfile
-from datetime import date, timedelta
 from statistics import mean
+import zipfile
 from zoneinfo import ZoneInfo
 
-import holidays
-import defusedxml.ElementTree as et
-import homeassistant.util.dt as dt_util
 from aiohttp import ClientSession
+import defusedxml.ElementTree as et
+import holidays
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_point_in_time
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+import homeassistant.util.dt as dt_util
 
-from .utils import get_fascia, get_fascia_for_xml
 from .const import (
     CONF_ACTUAL_DATA_ONLY,
     CONF_SCAN_HOUR,
@@ -36,6 +32,7 @@ from .const import (
     PUN_FASCIA_F23,
     PUN_FASCIA_MONO,
 )
+from .utils import get_fascia, get_fascia_for_xml
 
 _LOGGER = logging.getLogger(__name__)
 
