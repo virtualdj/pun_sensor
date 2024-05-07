@@ -69,7 +69,7 @@ async def async_setup_entry(
 
 
 def fmt_float(num: float) -> str:
-    """Formatta adeguatamente il numero decimale"""
+    """Formatta adeguatamente il numero decimale."""
     if has_suggested_display_precision:
         return str(num)
 
@@ -80,7 +80,7 @@ def fmt_float(num: float) -> str:
 
 
 class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
-    """Sensore PUN relativo al prezzo medio mensile per fasce"""
+    """Sensore PUN relativo al prezzo medio mensile per fasce."""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator, tipo: int) -> None:
         super().__init__(coordinator)
@@ -115,7 +115,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         self._native_value = 0
 
     def _handle_coordinator_update(self) -> None:
-        """Gestisce l'aggiornamento dei dati dal coordinator"""
+        """Gestisce l'aggiornamento dei dati dal coordinator."""
         self._available = self.coordinator.orari[self.tipo] > 0
         if self._available:
             self._native_value = self.coordinator.pun[self.tipo]
@@ -123,13 +123,13 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 
     @property
     def extra_restore_state_data(self) -> ExtraStoredData:
-        """Determina i dati da salvare per il ripristino successivo"""
+        """Determina i dati da salvare per il ripristino successivo."""
         return RestoredExtraData(
-            dict(native_value=self._native_value if self._available else None)
+            {"native_value": self._native_value if self._available else None}
         )
 
     async def async_added_to_hass(self) -> None:
-        """Entità aggiunta ad Home Assistant"""
+        """Entità aggiunta ad Home Assistant."""
         await super().async_added_to_hass()
 
         # Recupera lo stato precedente, se esiste
@@ -140,22 +140,22 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 
     @property
     def should_poll(self) -> bool:
-        """Determina l'aggiornamento automatico"""
+        """Determina l'aggiornamento automatico."""
         return False
 
     @property
     def available(self) -> bool:
-        """Determina se il valore è disponibile"""
+        """Determina se il valore è disponibile."""
         return self._available
 
     @property
     def native_value(self) -> float:
-        """Valore corrente del sensore"""
+        """Valore corrente del sensore."""
         return self._native_value
 
     @property
     def native_unit_of_measurement(self) -> str:
-        """Unita' di misura"""
+        """Unita' di misura."""
         return f"{CURRENCY_EURO}/{UnitOfEnergy.KILO_WATT_HOUR}"
 
     @property
@@ -164,41 +164,37 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 
     @property
     def icon(self) -> str:
-        """Icona da usare nel frontend"""
+        """Icona da usare nel frontend."""
         return "mdi:chart-line"
 
     @property
     def name(self) -> str:
-        """Restituisce il nome del sensore"""
+        """Restituisce il nome del sensore."""
         if self.tipo == PUN_FASCIA_F3:
             return "PUN fascia F3"
-        elif self.tipo == PUN_FASCIA_F2:
+        if self.tipo == PUN_FASCIA_F2:
             return "PUN fascia F2"
-        elif self.tipo == PUN_FASCIA_F1:
+        if self.tipo == PUN_FASCIA_F1:
             return "PUN fascia F1"
-        elif self.tipo == PUN_FASCIA_MONO:
+        if self.tipo == PUN_FASCIA_MONO:
             return "PUN mono-orario"
-        elif self.tipo == PUN_FASCIA_F23:
+        if self.tipo == PUN_FASCIA_F23:
             return "PUN fascia F23"
-        else:
-            return "None"
+        return "None"
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
-        """Restituisce gli attributi di stato"""
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Restituisce gli attributi di stato."""
         if has_suggested_display_precision:
             return {}
 
         # Nelle versioni precedenti di Home Assistant
         # restituisce un valore arrotondato come attributo
-        state_attr = {
-            ATTR_ROUNDED_DECIMALS: str(format(round(self.native_value, 3), ".3f"))
-        }
-        return state_attr
+        return {ATTR_ROUNDED_DECIMALS: str(format(round(self.native_value, 3), ".3f"))}
 
 
 class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
-    """Sensore che rappresenta la fascia PUN corrente"""
+    """Sensore che rappresenta la fascia PUN corrente."""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
         super().__init__(coordinator)
@@ -212,44 +208,43 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
         self._attr_has_entity_name = True
 
     def _handle_coordinator_update(self) -> None:
-        """Gestisce l'aggiornamento dei dati dal coordinator"""
+        """Gestisce l'aggiornamento dei dati dal coordinator."""
         self.async_write_ha_state()
 
     @property
     def should_poll(self) -> bool:
-        """Determina l'aggiornamento automatico"""
+        """Determina l'aggiornamento automatico."""
         return False
 
     @property
     def available(self) -> bool:
-        """Determina se il valore è disponibile"""
+        """Determina se il valore è disponibile."""
         return self.coordinator.fascia_corrente is not None
 
     @property
     def state(self) -> str:
-        """Restituisce la fascia corrente come stato"""
+        """Restituisce la fascia corrente come stato."""
         if self.coordinator.fascia_corrente == 3:
             return "F3"
-        elif self.coordinator.fascia_corrente == 2:
+        if self.coordinator.fascia_corrente == 2:
             return "F2"
-        elif self.coordinator.fascia_corrente == 1:
+        if self.coordinator.fascia_corrente == 1:
             return "F1"
-        else:
-            return "None"
+        return "None"
 
     @property
     def icon(self) -> str:
-        """Icona da usare nel frontend"""
+        """Icona da usare nel frontend."""
         return "mdi:timeline-clock-outline"
 
     @property
     def name(self) -> str:
-        """Restituisce il nome del sensore"""
+        """Restituisce il nome del sensore."""
         return "Fascia corrente"
 
 
 class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
-    """Sensore che rappresenta il prezzo PUN della fascia corrente"""
+    """Sensore che rappresenta il prezzo PUN della fascia corrente."""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
         super().__init__(coordinator)
@@ -268,7 +263,7 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
         self._friendly_name = "Prezzo fascia corrente"
 
     def _handle_coordinator_update(self) -> None:
-        """Gestisce l'aggiornamento dei dati dal coordinator"""
+        """Gestisce l'aggiornamento dei dati dal coordinator."""
         if super().available:
             if self.coordinator.fascia_corrente == 3:
                 self._available = self.coordinator.orari[PUN_FASCIA_F3] > 0
@@ -294,16 +289,16 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
 
     @property
     def extra_restore_state_data(self) -> ExtraStoredData:
-        """Determina i dati da salvare per il ripristino successivo"""
+        """Determina i dati da salvare per il ripristino successivo."""
         return RestoredExtraData(
-            dict(
-                native_value=self._native_value if self._available else None,
-                friendly_name=self._friendly_name if self._available else None,
-            )
+            {
+                "native_value": self._native_value if self._available else None,
+                "friendly_name": self._friendly_name if self._available else None,
+            }
         )
 
     async def async_added_to_hass(self) -> None:
-        """Entità aggiunta ad Home Assistant"""
+        """Entità aggiunta ad Home Assistant."""
         await super().async_added_to_hass()
 
         # Recupera lo stato precedente, se esiste
@@ -318,17 +313,17 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
 
     @property
     def available(self) -> bool:
-        """Determina se il valore è disponibile"""
+        """Determina se il valore è disponibile."""
         return self._available
 
     @property
     def native_value(self) -> float:
-        """Restituisce il prezzo della fascia corrente"""
+        """Restituisce il prezzo della fascia corrente."""
         return self._native_value
 
     @property
     def native_unit_of_measurement(self) -> str:
-        """Unita' di misura"""
+        """Unita' di misura."""
         return f"{CURRENCY_EURO}/{UnitOfEnergy.KILO_WATT_HOUR}"
 
     @property
@@ -337,23 +332,20 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
 
     @property
     def icon(self) -> str:
-        """Icona da usare nel frontend"""
+        """Icona da usare nel frontend."""
         return "mdi:currency-eur"
 
     @property
     def name(self) -> str:
-        """Restituisce il nome del sensore"""
+        """Restituisce il nome del sensore."""
         return self._friendly_name
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
-        """Restituisce gli attributi di stato"""
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Restituisce gli attributi di stato."""
         if has_suggested_display_precision:
             return {}
 
         # Nelle versioni precedenti di Home Assistant
         # restituisce un valore arrotondato come attributo
-        state_attr = {
-            ATTR_ROUNDED_DECIMALS: str(format(round(self.native_value, 3), ".3f"))
-        }
-        return state_attr
+        return {ATTR_ROUNDED_DECIMALS: str(format(round(self.native_value, 3), ".3f"))}
