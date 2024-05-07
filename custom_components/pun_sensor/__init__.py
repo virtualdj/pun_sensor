@@ -4,7 +4,7 @@ import holidays
 from statistics import mean
 import zipfile, io
 from bs4 import BeautifulSoup
-import xml.etree.ElementTree as et
+import defusedxml.ElementTree as et
 from typing import Tuple
 from functools import partial
 
