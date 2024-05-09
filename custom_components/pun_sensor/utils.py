@@ -7,36 +7,37 @@ from zipfile import ZipFile
 
 import defusedxml.ElementTree as et
 import holidays
+from .interfaces import Fascia, PunData
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def get_fascia_for_xml(data: date, festivo: bool, ora: int) -> int:
-    """Restituisce il numero di fascia oraria di un determinato giorno/ora"""
+def get_fascia_for_xml(data: date, festivo: bool, ora: int) -> Fascia:
+    """Restituisce la fascia oraria di un determinato giorno/ora"""
     # F1 = lu-ve 8-19
     # F2 = lu-ve 7-8, lu-ve 19-23, sa 7-23
     # F3 = lu-sa 0-7, lu-sa 23-24, do, festivi
 
     # Festivi e domeniche
     if festivo or (data.weekday() == 6):
-        return 3
+        return Fascia.F3
 
     # Sabato
     if data.weekday() == 5:
         if 7 <= ora < 23:
-            return 2
-        return 3
+            return Fascia.F2
+        return Fascia.F3
 
     # Altri giorni della settimana
     if ora == 7 or 19 <= ora < 23:
-        return 2
+        return Fascia.F2
     if 8 <= ora < 19:
-        return 1
-    return 3
+        return Fascia.F1
+    return Fascia.F3
 
 
-def get_fascia(dataora: datetime) -> tuple[int, datetime]:
-    """Restituisce la fascia della data/ora indicata (o quella corrente) e la data del prossimo cambiamento."""
+def get_fascia(dataora: datetime) -> tuple[Fascia, datetime]:
+    """Restituisce la fascia della data/ora indicata e la data del prossimo cambiamento."""
 
     # Verifica se la data corrente è un giorno con festività
     festivo = dataora in holidays.IT()  # type: ignore
@@ -47,7 +48,7 @@ def get_fascia(dataora: datetime) -> tuple[int, datetime]:
     # F3 = lu-sa 0-7, lu-sa 23-24, do, festivi
     # Festivi
     if festivo:
-        fascia = 3
+        fascia = Fascia.F3
 
         # Prossima fascia: alle 7 di un giorno non domenica o festività
         prossima = get_next_date(dataora, 7, 1, True)
@@ -56,20 +57,20 @@ def get_fascia(dataora: datetime) -> tuple[int, datetime]:
     match dataora.weekday():
         # Domenica
         case 6:
-            fascia = 3
+            fascia = Fascia.F3
             prossima = get_next_date(dataora, 7, 1, True)
 
         # Sabato
         case 5:
             if 7 <= dataora.hour < 23:
                 # Sabato dalle 7 alle 23
-                fascia = 2
+                fascia = Fascia.F2
                 # Prossima fascia: alle 23 dello stesso giorno
                 prossima = get_next_date(dataora, 23)
             # abbiamo solo due fasce quindi facciamo solo il check per la prossima fascia
             else:
                 # Sabato dopo le 23 e prima delle 7
-                fascia = 3
+                fascia = Fascia.F3
 
                 if dataora.hour < 7:
                     # Prossima fascia: alle 7 dello stesso giorno
@@ -82,7 +83,7 @@ def get_fascia(dataora: datetime) -> tuple[int, datetime]:
         case _:
             if dataora.hour == 7 or 19 <= dataora.hour < 23:
                 # Lunedì-venerdì dalle 7 alle 8 e dalle 19 alle 23
-                fascia = 2
+                fascia = Fascia.F2
 
                 if dataora.hour == 7:
                     # Prossima fascia: alle 8 dello stesso giorno
@@ -93,13 +94,13 @@ def get_fascia(dataora: datetime) -> tuple[int, datetime]:
 
             elif 8 <= dataora.hour < 19:
                 # Lunedì-venerdì dalle 8 alle 19
-                fascia = 1
+                fascia = Fascia.F1
                 # Prossima fascia: alle 19 dello stesso giorno
                 prossima = get_next_date(dataora, 19)
 
             else:
                 # Lunedì-venerdì dalle 23 alle 7 del giorno dopo
-                fascia = 3
+                fascia = Fascia.F3
 
                 if dataora.hour < 7:
                     # Siamo dopo la mezzanotte
@@ -139,7 +140,7 @@ def get_next_date(
     return prossima
 
 
-def extract_xml(archive: ZipFile):
+def extract_xml(archive: ZipFile, pun_data: PunData) -> PunData:
     """Estrae i valori del pun per ogni fascia da un archivio zip contenente un XML.
 
     Returns:
@@ -185,15 +186,8 @@ def extract_xml(archive: ZipFile):
             fascia = get_fascia_for_xml(dat_date, festivo, ora)
 
             # Calcola le statistiche
-            mono.append(prezzo)
-            match fascia:
-                case 3:
-                    f3.append(prezzo)
-                case 2:
-                    f2.append(prezzo)
-                case 1:
-                    f1.append(prezzo)
-                case _:
-                    pass
+            pun_data.pun[Fascia.MONO].append(prezzo)
 
-    return [mono, f1, f2, f3]
+            pun_data.pun[fascia].append(prezzo)
+
+    return pun_data

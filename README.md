@@ -1,7 +1,7 @@
 # Prezzi PUN del mese
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
-
+[![release][release-badge]][release-url]
 [![Validate with hassfest](https://github.com/virtualdj/pun_sensor/actions/workflows/hassfest.yml/badge.svg?branch=master)](https://github.com/virtualdj/pun_sensor/actions/workflows/hassfest.yml) [![Validate with HACS](https://github.com/virtualdj/pun_sensor/actions/workflows/hacs.yml/badge.svg)](https://github.com/virtualdj/pun_sensor/actions/workflows/hacs.yml)
 
 Integrazione per **Home Assistant** (basata sullo script [pun-fasce](https://github.com/virtualdj/pun-fasce)) che mostra i prezzi stimati del mese corrente per fasce orarie (F1, F2 e F3 e mono-oraria) nonché la fascia oraria attuale.
@@ -91,3 +91,7 @@ Ovviamente non ho alcuna certezza che tutto questo sia la maniera giusta di proc
 - La [PR #99213](https://github.com/home-assistant/core/pull/99213/files) di Home Assistant per il suggerimento di usare `async_call_later` anziché sommare il timedelta all'ora corrente
 - La [PR #76793](https://github.com/home-assistant/core/pull/76793/files) di Home Assistant per un esempio di come usare il [cancellation token](https://developers.home-assistant.io/docs/integration_listen_events/#available-event-helpers) restituito da `async_track_point_in_time`
 - I commit [1](https://github.com/home-assistant/core/commit/c574d86ddbafd6c18995ad9efb297fda3ce4292c) e [2](https://github.com/home-assistant/core/commit/36e7689d139d0f517bbdd8f8f2c11e18936d27b3) per risolvere il warning nei log `[homeassistant.util.loop] Detected blocking call to import_module inside the event loop by custom integration` comparso con la versione 2024.5.0 di Home Assistant e dovuto alle librerie importate
+
+<!-- Badges -->
+[release-badge]: https://img.shields.io/github/v/release/moddroid94/pun_sensor?style=flat-square
+[release-url]: https://github.com/moddroid94/pun_sensor/releases

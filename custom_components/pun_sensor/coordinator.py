@@ -10,8 +10,6 @@ from zoneinfo import ZoneInfo
 
 from aiohttp import ClientSession, ServerConnectionError
 
-import holidays
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -27,13 +25,9 @@ from .const import (
     DOMAIN,
     EVENT_UPDATE_FASCIA,
     EVENT_UPDATE_PUN,
-    PUN_FASCIA_F1,
-    PUN_FASCIA_F2,
-    PUN_FASCIA_F3,
-    PUN_FASCIA_F23,
-    PUN_FASCIA_MONO,
 )
 from .utils import get_fascia, get_next_date, extract_xml
+from .interfaces import PunData, Fascia, PunValues
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -67,10 +61,10 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Inizializza i valori di default
         self.web_retries = 0
         self.schedule_token = None
-        self.pun = [0.0, 0.0, 0.0, 0.0, 0.0]
-        self.orari = [0, 0, 0, 0, 0]
-        self.fascia_corrente: int | None = None
-        self.fascia_successiva: int | None = None
+        self.pun_data: PunData = PunData()
+        self.pun_values: PunValues = PunValues()
+        self.fascia_corrente: Fascia | None = None
+        self.fascia_successiva: Fascia | None = None
         self.prossimo_cambio_fascia: datetime | None = None
         self.termine_prossima_fascia: datetime | None = None
 
@@ -134,7 +128,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             try:
                 archive = zipfile.ZipFile(io.BytesIO(bytes_response), "r")
 
-            # Esce perché l'output non è uno ZIP, o ha un errore IO
+            # Riotorna error se l'output non è uno ZIP, o ha un errore IO
             except (zipfile.BadZipfile, OSError) as e:  # not a zip:
                 _LOGGER.error(
                     "Error failed download. url %s, length %s, response %s",
@@ -150,39 +144,41 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             len(archive.namelist()),
             ", ".join(str(fn) for fn in archive.namelist()),
         )
-        # Estrae i dati dall'archivio
-        extracted_data = extract_xml(archive)
 
-        # Salva i risultati nel coordinator
-        self.orari[PUN_FASCIA_MONO] = len(extracted_data[PUN_FASCIA_MONO])
-        self.orari[PUN_FASCIA_F1] = len(extracted_data[PUN_FASCIA_F1])
-        self.orari[PUN_FASCIA_F2] = len(extracted_data[PUN_FASCIA_F2])
-        self.orari[PUN_FASCIA_F3] = len(extracted_data[PUN_FASCIA_F3])
-        # iter on orari
-        for i in range(5):  # stop is omitted
-            if self.orari[i] > 0:
-                self.pun[i] = mean(extracted_data[i])
-            # fascia F23
-            if i == 4:
-                # Calcola la fascia F23 (a partire da F2 ed F3)
-                # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:
-                # https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806
-                if (self.orari[PUN_FASCIA_F2] and self.orari[PUN_FASCIA_F3]) > 0:
-                    # Esistono dati sia per F2 che per F3
-                    self.orari[PUN_FASCIA_F23] = (
-                        self.orari[PUN_FASCIA_F2] + self.orari[PUN_FASCIA_F3]
-                    )
-                    self.pun[PUN_FASCIA_F23] = (
-                        0.46 * self.pun[PUN_FASCIA_F2] + 0.54 * self.pun[PUN_FASCIA_F3]
-                    )
-                else:
-                    # Devono esserci dati sia per F2 che per F3 affinché il risultato sia valido
-                    self.orari[PUN_FASCIA_F23] = 0
-                    self.pun[PUN_FASCIA_F23] = 0
+        # Estrae i dati dall'archivio
+        self.pun_data = extract_xml(archive, self.pun_data)
+
+        # per ogni fascia, calcola il valore del pun
+        for fascia, value_list in self.pun_data.pun.items():
+            # se abbiamo valori nella fascia
+            if len(value_list) > 0:
+                # calcola la media dei pun e aggiorna il valore del pun attuale per la fascia corrispondente
+                self.pun_values.value[fascia] = mean(self.pun_data.pun[fascia])
+            else:
+                # we skip empy dicts
+                pass
+        # Calcola la fascia F23 (a partire da F2 ed F3)
+        # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:
+        # https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806
+        # essendo derivato e non avendo sicurezza dell'ordine del dict, controlliamo dopo
+        if (
+            len(self.pun_data.pun[Fascia.F2]) and len(self.pun_data.pun[Fascia.F3])
+        ) > 0:
+            self.pun_values.value[Fascia.F23] = (
+                0.46 * self.pun_values.value[Fascia.F2]
+                + 0.54 * self.pun_values.value[Fascia.F3]
+            )
+        else:
+            self.pun_values.value[Fascia.F23] = 0
 
         # Logga i dati
-        _LOGGER.debug("Numero di dati: " + ", ".join(str(i) for i in self.orari))
-        _LOGGER.debug("Valori PUN: " + ", ".join(str(f) for f in self.pun))
+        _LOGGER.debug(
+            "Numero di dati: %s",
+            ", ".join(str(len(i)) for i in self.pun_data.pun.values()),
+        )
+        _LOGGER.debug(
+            "Valori PUN: %s", ", ".join(str(f) for f in self.pun_values.value.values())
+        )
         return
 
     async def update_fascia(self, now=None):
@@ -235,7 +231,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
             # Se non ci sono eccezioni, ha avuto successo
             self.web_retries = 0
-        # errore nel fetch dei dati
+        # errore nel fetch dei dati, if request not 200
         except ServerConnectionError as e:
             # Errori durante l'esecuzione dell'aggiornamento, riprova dopo
             if self.web_retries < 6:
@@ -285,9 +281,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # pylint: disable=W0718
         # Broad Except catching
-        # possibili errori: estrazione dei dati, file non zip.
+        # possibili errori: estrazione dei dati, file non valido.
         # Non ha avuto errori nel download, da gestire diversamente, per ora schedula a domani
-        # #TODO Wrap XML extracion into try/catch to re-raise into something we can expect
         except (Exception, UpdateFailed) as e:
             # Giorno dopo
             # Annulla eventuali schedulazioni attive

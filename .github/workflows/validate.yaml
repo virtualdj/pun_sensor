@@ -1,0 +1,53 @@
+name: "Validate"
+
+on:
+  push:
+    branches:
+      - master
+  pull_request_target:
+    branches:
+      - master
+
+jobs:
+#  validate-ruff:
+#    name: With Ruff
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Check out repository
+#        uses: actions/checkout@v4
+#
+#      - name: Check ruff
+#        uses: chartboost/ruff-action@v1
+#        with:
+#          args: 'format --diff'
+
+  validate-hassfest:
+    name: Validate with hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: "Update manifest.json"
+        run: |
+          python3 ${{ github.workspace }}/.github/workflows/update_manifest.py
+
+      - name: Hassfest validation
+        uses: home-assistant/actions/hassfest@master
+
+  validate-hacs:
+    name: Validate with HACS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: "Update manifest.json"
+        run: |
+          python3 ${{ github.workspace }}/.github/workflows/update_manifest.py
+
+      - name: HACS Validation
+        uses: hacs/action@main
+        with:
+          category: integration
+

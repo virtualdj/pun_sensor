@@ -1,0 +1,39 @@
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+change-template: "- #$NUMBER $TITLE @$AUTHOR"
+sort-direction: ascending
+categories:
+  - title: "🚀 Nuove funzioni"
+    labels:
+      - "feature"
+      - "enhancement"
+
+  - title: "🐛 Bug Fixes"
+    labels:
+      - "fix"
+      - "bugfix"
+      - "bug"
+
+#  - title: '🧰 Maintenance'
+#    label:
+#      - 'dependencies'
+
+version-resolver:
+  major:
+    labels:
+      - "major"
+  minor:
+    labels:
+      - "minor"
+  patch:
+    labels:
+      - "patch"
+  default: patch
+template: |
+  [![Downloads di questa release](https://img.shields.io/github/downloads/moddroid94/pun_sensor/v$RESOLVED_VERSION/total.svg)](https://github.com/moddroid94/pun_sensor/releases/v$RESOLVED_VERSION)
+  ## Cambiamenti
+
+  $CHANGES
+
+  ## ⭐️ Grazie per il contributo a:
+  $CONTRIBUTORS

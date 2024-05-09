@@ -26,7 +26,7 @@ PLATFORMS: list[str] = ["sensor"]
 
 
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
-    """Impostazione dell'integrazione da configurazione Home Assistant"""
+    """Impostazione dell'integrazione da configurazione Home Assistant."""
 
     # Carica le dipendenze di holidays in background
     with async_pause_setup(hass, SetupPhases.WAIT_IMPORT_PACKAGES):
