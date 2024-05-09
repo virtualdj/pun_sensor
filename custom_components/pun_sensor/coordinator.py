@@ -19,6 +19,7 @@ from homeassistant.helpers.event import async_call_later, async_track_point_in_t
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 import homeassistant.util.dt as dt_util
 
+
 from .const import (
     CONF_ACTUAL_DATA_ONLY,
     CONF_SCAN_HOUR,
@@ -211,6 +212,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             "Nuova fascia corrente: F%s (prossima: F%s)",
             self.fascia_corrente,
             self.fascia_successiva,
+        )
+        _LOGGER.info(
+            "Prossimo cambio fascia: %s",
             self.prossimo_cambio_fascia.strftime("%a %d/%m/%Y %H:%M:%S %z"),
         )
 
@@ -251,8 +255,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Prepara la schedulazione
             if retry_in_minutes > 0:
                 # Minuti dopo
-                _LOGGER.warn(
-                    "Errore durante l'aggiornamento via web, nuovo tentativo tra %s minut%s.",
+                _LOGGER.warning(
+                    "Errore durante il fetch dei dati, nuovo tentativo tra %s minut%s.",
                     retry_in_minutes,
                     "o" if retry_in_minutes == 1 else "i",
                     exc_info=e,
@@ -308,6 +312,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             )
             # Esce e attende la prossima schedulazione
             return
+
         # Notifica che i dati PUN sono stati aggiornati con successo
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
 
