@@ -32,7 +32,7 @@ from .const import (
     PUN_FASCIA_F23,
     PUN_FASCIA_MONO,
 )
-from .utils import get_fascia, get_fascia_for_xml
+from .utils import get_fascia, get_next_date, extract_xml
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -149,93 +149,15 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             len(archive.namelist()),
             ", ".join(str(fn) for fn in archive.namelist()),
         )
-
-        # Carica le festività
-        it_holidays = holidays.IT()
-
-        # Inizializza le variabili di conteggio dei risultati
-        mono = []
-        f1 = []
-        f2 = []
-        f3 = []
-
-        # Esamina ogni file XML nello ZIP (ordinandoli prima)
-        for fn in sorted(archive.namelist()):
-            # Scompatta il file XML in memoria
-            xml_tree = et.parse(archive.open(fn))
-
-            # Parsing dell'XML (1 file = 1 giorno)
-            xml_root = xml_tree.getroot()
-
-            # Estrae la data dal primo elemento (sarà identica per gli altri)
-            dat_string = (
-                xml_root.find("Prezzi").find("Data").text
-            )  # YYYYMMDD # type: ignore
-
-            # Converte la stringa giorno in data
-            dat_date = date(
-                int(dat_string[0:4]),  # type: ignore
-                int(dat_string[4:6]),  # type: ignore
-                int(dat_string[6:8]),  # type: ignore
-            )
-
-            # Verifica la festività
-            festivo = dat_date in it_holidays
-
-            # Estrae le rimanenti informazioni
-            for prezzi in xml_root.iter("Prezzi"):
-                # Estrae l'ora dall'XML
-                ora = int(prezzi.find("Ora").text) - 1  # 1..24 # type: ignore
-
-                # Estrae il prezzo PUN dall'XML in un float
-                prezzo_string = prezzi.find("PUN").text  # type: ignore
-                prezzo_string = prezzo_string.replace(".", "").replace(",", ".")  # type: ignore
-                prezzo = float(prezzo_string) / 1000
-
-                # Estrae la fascia oraria
-                fascia = get_fascia_for_xml(dat_date, festivo, ora)
-
-                # Calcola le statistiche
-                mono.append(prezzo)
-                match fascia:
-                    case 3:
-                        f3.append(prezzo)
-                    case 2:
-                        f2.append(prezzo)
-                    case 1:
-                        f1.append(prezzo)
-                    case _:
-                        pass
+        # Estrae i dati dall'archivio
+        extracted_data = extract_xml(archive)
 
         # Salva i risultati nel coordinator
-        self.orari[PUN_FASCIA_MONO] = len(mono)
-        self.orari[PUN_FASCIA_F1] = len(f1)
-        self.orari[PUN_FASCIA_F2] = len(f2)
-        self.orari[PUN_FASCIA_F3] = len(f3)
-        if self.orari[PUN_FASCIA_MONO] > 0:
-            self.pun[PUN_FASCIA_MONO] = mean(mono)
-        if self.orari[PUN_FASCIA_F1] > 0:
-            self.pun[PUN_FASCIA_F1] = mean(f1)
-        if self.orari[PUN_FASCIA_F2] > 0:
-            self.pun[PUN_FASCIA_F2] = mean(f2)
-        if self.orari[PUN_FASCIA_F3] > 0:
-            self.pun[PUN_FASCIA_F3] = mean(f3)
-
-        # Calcola la fascia F23 (a partire da F2 ed F3)
-        # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:
-        # https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806
-        if (self.orari[PUN_FASCIA_F2] and self.orari[PUN_FASCIA_F3]) > 0:
-            # Esistono dati sia per F2 che per F3
-            self.orari[PUN_FASCIA_F23] = (
-                self.orari[PUN_FASCIA_F2] + self.orari[PUN_FASCIA_F3]
-            )
-            self.pun[PUN_FASCIA_F23] = (
-                0.46 * self.pun[PUN_FASCIA_F2] + 0.54 * self.pun[PUN_FASCIA_F3]
-            )
-        else:
-            # Devono esserci dati sia per F2 che per F3 affinché il risultato sia valido
-            self.orari[PUN_FASCIA_F23] = 0
-            self.pun[PUN_FASCIA_F23] = 0
+        self.orari[PUN_FASCIA_MONO] = len(extracted_data[PUN_FASCIA_MONO])
+        self.orari[PUN_FASCIA_F1] = len(extracted_data[PUN_FASCIA_F1])
+        self.orari[PUN_FASCIA_F2] = len(extracted_data[PUN_FASCIA_F2])
+        self.orari[PUN_FASCIA_F3] = len(extracted_data[PUN_FASCIA_F3])
+        # iter on orari
 
         # Logga i dati
         _LOGGER.debug("Numero di dati: " + ", ".join(str(i) for i in self.orari))
