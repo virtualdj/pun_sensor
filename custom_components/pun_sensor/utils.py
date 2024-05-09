@@ -1,5 +1,8 @@
-from datetime import date, datetime, timedelta
 import logging
+from datetime import date, datetime, timedelta
+from zipfile import ZipFile
+
+import defusedxml.ElementTree as et
 import holidays
 
 _LOGGER = logging.getLogger(__name__)
@@ -131,3 +134,69 @@ def get_next_date(
             prossima += timedelta(days=1)
 
     return prossima
+
+
+def extract_xml(archive: ZipFile):
+    """Estrae i valori del pun per ogni fascia da un archivio zip contenente un XML.
+
+    Returns:
+    List[ list[MONO: float], list[F1: float], list[F2: float], list[F3: float] ]
+    """
+    # Carica le festività
+    it_holidays = holidays.IT()
+
+    # Inizializza le variabili di conteggio dei risultati
+    mono: list[float] = []
+    f1: list[float] = []
+    f2: list[float] = []
+    f3: list[float] = []
+
+    # Esamina ogni file XML nello ZIP (ordinandoli prima)
+    for fn in sorted(archive.namelist()):
+        # Scompatta il file XML in memoria
+        xml_tree = et.parse(archive.open(fn))
+
+        # Parsing dell'XML (1 file = 1 giorno)
+        xml_root = xml_tree.getroot()
+
+        # Estrae la data dal primo elemento (sarà identica per gli altri)
+        dat_string = (
+            xml_root.find("Prezzi").find("Data").text  # type: ignore
+        )  # YYYYMMDD # type: ignore
+
+        # Converte la stringa giorno in data
+        dat_date = date(
+            int(dat_string[0:4]),  # type: ignore
+            int(dat_string[4:6]),  # type: ignore
+            int(dat_string[6:8]),  # type: ignore
+        )
+
+        # Verifica la festività
+        festivo = dat_date in it_holidays
+
+        # Estrae le rimanenti informazioni
+        for prezzi in xml_root.iter("Prezzi"):
+            # Estrae l'ora dall'XML
+            ora = int(prezzi.find("Ora").text) - 1  # 1..24 # type: ignore
+
+            # Estrae il prezzo PUN dall'XML in un float
+            prezzo_string = prezzi.find("PUN").text  # type: ignore
+            prezzo_string = prezzo_string.replace(".", "").replace(",", ".")  # type: ignore
+            prezzo = float(prezzo_string) / 1000
+
+            # Estrae la fascia oraria
+            fascia = get_fascia_for_xml(dat_date, festivo, ora)
+
+            # Calcola le statistiche
+            mono.append(prezzo)
+            match fascia:
+                case 3:
+                    f3.append(prezzo)
+                case 2:
+                    f2.append(prezzo)
+                case 1:
+                    f1.append(prezzo)
+                case _:
+                    pass
+
+    return [mono, f1, f2, f3]
