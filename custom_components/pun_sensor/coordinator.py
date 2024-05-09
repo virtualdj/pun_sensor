@@ -78,6 +78,13 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.actual_data_only,
         )
 
+    def clean_tokens(self):
+        """Clear schedule tokens, if any."""
+        # Annulla eventuali schedulazioni attive
+        if self.schedule_token is not None:
+            self.schedule_token()
+            self.schedule_token = None
+
     async def _async_update_data(self):
         """Aggiornamento dati a intervalli prestabiliti"""
 
@@ -305,9 +312,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                 retry_in_minutes = 60 * (4 - self.web_retries)
 
             # Annulla eventuali schedulazioni attive
-            if self.schedule_token is not None:
-                self.schedule_token()
-                self.schedule_token = None
+            self.clean_tokens()
 
             # Prepara la schedulazione
             if retry_in_minutes > 0:
@@ -381,9 +386,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             next_update_pun = next_update_pun + timedelta(days=1)
 
         # Annulla eventuali schedulazioni attive
-        if self.schedule_token is not None:
-            self.schedule_token()
-            self.schedule_token = None
+        self.clean_tokens()
 
         # Schedula la prossima esecuzione
         self.schedule_token = async_track_point_in_time(
