@@ -234,24 +234,16 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # errore nel fetch dei dati
         except ServerConnectionError as e:
             # Errori durante l'esecuzione dell'aggiornamento, riprova dopo
-            if self.web_retries == 0:
-                # Primo errore, riprova dopo 1 minuto
-                self.web_retries = 5
-                retry_in_minutes = 1
-            elif self.web_retries == 5:
-                # Secondo errore, riprova dopo 10 minuti
-                self.web_retries -= 1
-                retry_in_minutes = 10
-            elif self.web_retries == 1:
-                # Ultimo errore, tentativi esauriti
+            if self.web_retries < 6:
+                # exponential retry time using retry number, max 25min. after 5 try
+                self.web_retries = +1
+                retry_in_minutes = self.web_retries * self.web_retries
+            else:
+                # Sesto errore, tentativi esauriti
                 self.web_retries = 0
 
                 # Schedula al giorno dopo
                 retry_in_minutes = 0
-            else:
-                # Ulteriori errori (4, 3, 2)
-                self.web_retries -= 1
-                retry_in_minutes = 60 * (4 - self.web_retries)
 
             # Annulla eventuali schedulazioni attive
             self.clean_tokens()
