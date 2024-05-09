@@ -158,6 +158,26 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.orari[PUN_FASCIA_F2] = len(extracted_data[PUN_FASCIA_F2])
         self.orari[PUN_FASCIA_F3] = len(extracted_data[PUN_FASCIA_F3])
         # iter on orari
+        for i in range(5):  # stop is omitted
+            if self.orari[i] > 0:
+                self.pun[i] = mean(extracted_data[i])
+            # fascia F23
+            if i == 4:
+                # Calcola la fascia F23 (a partire da F2 ed F3)
+                # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:
+                # https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806
+                if (self.orari[PUN_FASCIA_F2] and self.orari[PUN_FASCIA_F3]) > 0:
+                    # Esistono dati sia per F2 che per F3
+                    self.orari[PUN_FASCIA_F23] = (
+                        self.orari[PUN_FASCIA_F2] + self.orari[PUN_FASCIA_F3]
+                    )
+                    self.pun[PUN_FASCIA_F23] = (
+                        0.46 * self.pun[PUN_FASCIA_F2] + 0.54 * self.pun[PUN_FASCIA_F3]
+                    )
+                else:
+                    # Devono esserci dati sia per F2 che per F3 affinché il risultato sia valido
+                    self.orari[PUN_FASCIA_F23] = 0
+                    self.pun[PUN_FASCIA_F23] = 0
 
         # Logga i dati
         _LOGGER.debug("Numero di dati: " + ", ".join(str(i) for i in self.orari))
