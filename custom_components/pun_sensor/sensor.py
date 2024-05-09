@@ -1,15 +1,15 @@
 """pun sensor entity"""
 
-# pylint: disable=W0613
+# pylint: disable=W0613, W0601, W0239
 from typing import Any
 
 from awesomeversion.awesomeversion import AwesomeVersion
 
 from homeassistant.components.sensor import (
     ENTITY_ID_FORMAT,
-    SensorDeviceClass,
+    SensorDeviceClass,  # type: ignore #superseeded by HA rules
     SensorEntity,
-    SensorStateClass,
+    SensorStateClass,  # type: ignore #superseeded by HA rules
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CURRENCY_EURO, UnitOfEnergy, __version__ as HA_VERSION

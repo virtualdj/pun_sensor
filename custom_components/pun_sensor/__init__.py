@@ -1,5 +1,6 @@
 """Prezzi PUN del mese"""
 
+# pylint: disable= E1101
 from datetime import timedelta
 import logging
 from zoneinfo import ZoneInfo
@@ -29,7 +30,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
 
     # Carica le dipendenze di holidays in background
     with async_pause_setup(hass, SetupPhases.WAIT_IMPORT_PACKAGES):
-        await hass.async_add_import_executor_job(holidays.IT)
+        await hass.async_add_import_executor_job(holidays.IT)  # type: ignore
 
     # Salva il coordinator nella configurazione
     coordinator = PUNDataUpdateCoordinator(hass, config)
@@ -74,10 +75,11 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
         coordinator.scan_hour = config.options[CONF_SCAN_HOUR]
 
         # Calcola la data della prossima esecuzione (all'ora definita)
-        next_update_pun = dt_util.now().replace(
+        now = dt_util.now()
+        next_update_pun = now.replace(
             hour=coordinator.scan_hour, minute=0, second=0, microsecond=0
         )
-        if next_update_pun.hour < dt_util.now().hour:
+        if next_update_pun.hour < now.hour:
             # Se l'ora impostata è minore della corrente, schedula a domani
             # (perciò se è uguale esegue subito l'aggiornamento)
             next_update_pun = next_update_pun + timedelta(days=1)

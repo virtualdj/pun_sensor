@@ -1,3 +1,5 @@
+"""config flows for pun_sensor"""
+
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -71,10 +73,10 @@ class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Schema dati di configurazione (con default fissi)
         data_schema = {
-            vol.Required(CONF_SCAN_HOUR, default=1): vol.All(
+            vol.Required(CONF_SCAN_HOUR, default=1): vol.All(  # type: ignore
                 cv.positive_int, vol.Range(min=0, max=23)
             ),
-            vol.Optional(CONF_ACTUAL_DATA_ONLY, default=False): cv.boolean,
+            vol.Optional(CONF_ACTUAL_DATA_ONLY, default=False): cv.boolean,  # type: ignore
         }
 
         # Mostra la schermata di configurazione, con gli eventuali errori

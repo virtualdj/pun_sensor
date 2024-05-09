@@ -19,6 +19,7 @@ from homeassistant.helpers.event import async_call_later, async_track_point_in_t
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 import homeassistant.util.dt as dt_util
 
+
 from .const import (
     CONF_ACTUAL_DATA_ONLY,
     CONF_SCAN_HOUR,
@@ -211,6 +212,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             "Nuova fascia corrente: F%s (prossima: F%s)",
             self.fascia_corrente,
             self.fascia_successiva,
+        )
+        _LOGGER.info(
+            "Prossimo cambio fascia: %s",
             self.prossimo_cambio_fascia.strftime("%a %d/%m/%Y %H:%M:%S %z"),
         )
 
@@ -251,8 +255,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Prepara la schedulazione
             if retry_in_minutes > 0:
                 # Minuti dopo
-                _LOGGER.warn(
-                    "Errore durante l'aggiornamento via web, nuovo tentativo tra %s minut%s.",
+                _LOGGER.warning(
+                    "Errore durante il fetch dei dati, nuovo tentativo tra %s minut%s.",
                     retry_in_minutes,
                     "o" if retry_in_minutes == 1 else "i",
                     exc_info=e,
@@ -266,9 +270,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                     "Errore durante l'aggiornamento via web, tentativi esauriti.",
                     exc_info=e,
                 )
-                next_update_pun = dt_util.now().replace(
-                    hour=self.scan_hour, minute=0, second=0, microsecond=0
-                ) + timedelta(days=1)
+                next_update_pun = get_next_date(
+                    dt_util.now(time_zone=tz_pun), self.scan_hour, 1
+                )
                 self.schedule_token = async_track_point_in_time(
                     self.hass, self.update_pun, next_update_pun
                 )
@@ -308,13 +312,12 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             )
             # Esce e attende la prossima schedulazione
             return
+
         # Notifica che i dati PUN sono stati aggiornati con successo
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
 
         # Calcola la data della prossima esecuzione
-        next_update_pun = dt_util.now().replace(
-            hour=self.scan_hour, minute=0, second=0, microsecond=0
-        )
+        next_update_pun = get_next_date(dt_util.now(), self.scan_hour)
         if next_update_pun <= dt_util.now():
             # Se l'evento è già trascorso la esegue domani alla stessa ora
             next_update_pun = next_update_pun + timedelta(days=1)
