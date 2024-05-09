@@ -266,9 +266,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                     "Errore durante l'aggiornamento via web, tentativi esauriti.",
                     exc_info=e,
                 )
-                next_update_pun = dt_util.now().replace(
-                    hour=self.scan_hour, minute=0, second=0, microsecond=0
-                ) + timedelta(days=1)
+                next_update_pun = get_next_date(
+                    dt_util.now(time_zone=tz_pun), self.scan_hour, 1
+                )
                 self.schedule_token = async_track_point_in_time(
                     self.hass, self.update_pun, next_update_pun
                 )
@@ -312,9 +312,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
 
         # Calcola la data della prossima esecuzione
-        next_update_pun = dt_util.now().replace(
-            hour=self.scan_hour, minute=0, second=0, microsecond=0
-        )
+        next_update_pun = get_next_date(dt_util.now(), self.scan_hour)
         if next_update_pun <= dt_util.now():
             # Se l'evento è già trascorso la esegue domani alla stessa ora
             next_update_pun = next_update_pun + timedelta(days=1)
