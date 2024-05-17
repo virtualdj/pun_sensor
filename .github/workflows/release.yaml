@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  release:
+#    types: [prereleased,published]
+    types: [published]
+
+jobs:
+  release_zip_file:
+    name: Prepare release asset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        uses: home-assistant/actions/helpers/version@master
+
+      - name: "Update manifest.json"
+        run: |
+          python3 ${{ github.workspace }}/.github/workflows/update_manifest.py --version ${{ steps.version.outputs.version }}
+
+      - name: Create zip
+        run: |
+          cd custom_components/pun_sensor
+          zip pun_sensor.zip -r ./
+
+      - name: Upload zip to release
+        uses: svenstaro/upload-release-action@2.9.0
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./custom_components/pun_sensor/pun_sensor.zip
+          asset_name: pun_sensor.zip
+          tag: ${{ github.ref }}
+          overwrite: true
