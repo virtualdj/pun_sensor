@@ -10,7 +10,7 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/virtualdj/pun_sensor/issues",
   "loggers": ["pun_sensor"],
-  "requirements": ["holidays"],
+  "requirements": [],
   "single_config_entry": true,
   "version": "0.0.0"
 }
