@@ -232,12 +232,14 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Se non ci sono eccezioni, ha avuto successo
             self.web_retries = 0
         # errore nel fetch dei dati, if request not 200
-        except ServerConnectionError as e:
+        # pylint: disable=W0718
+        # Broad Except catching
+        except (Exception, UpdateFailed, ServerConnectionError) as e:
             # Errori durante l'esecuzione dell'aggiornamento, riprova dopo
-            if self.web_retries < 6:
-                # exponential retry time using retry number, max 25min. after 5 try
+            if self.web_retries < 4:
+                # 10 minuti dopo il primo tentativo, poi multipli di 60, max 180 min in 4 tentativi
+                retry_in_minutes = 10 if self.web_retries < 1 else 60 * self.web_retries
                 self.web_retries = +1
-                retry_in_minutes = self.web_retries * self.web_retries
             else:
                 # Sesto errore, tentativi esauriti
                 self.web_retries = 0
@@ -278,36 +280,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                 )
             # Esce e attende la prossima schedulazione
             return
-
-        # pylint: disable=W0718
-        # Broad Except catching
-        # possibili errori: estrazione dei dati, file non valido.
-        # Non ha avuto errori nel download, da gestire diversamente, per ora schedula a domani
-        except (Exception, UpdateFailed) as e:
-            # Giorno dopo
-            # Annulla eventuali schedulazioni attive
-            self.clean_tokens()
-
-            _LOGGER.error(
-                "Errore durante l'estrazione dei dati",
-                exc_info=e,
-            )
-
-            next_update_pun = get_next_date(
-                dt_util.now(time_zone=tz_pun), self.scan_hour, 1
-            )
-
-            self.schedule_token = async_track_point_in_time(
-                self.hass, self.update_pun, next_update_pun
-            )
-
-            _LOGGER.debug(
-                "Prossimo aggiornamento web: %s",
-                next_update_pun.strftime("%d/%m/%Y %H:%M:%S %z"),
-            )
-            # Esce e attende la prossima schedulazione
-            return
-
+        
         # Notifica che i dati PUN sono stati aggiornati con successo
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
 

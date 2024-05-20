@@ -84,13 +84,6 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         self.coordinator = coordinator
         self.fascia = fascia
 
-        # BREAKING CHANGE, NEW ENTITY_ID CONVENTION FOR SENSORS
-        # non so come reagisce HA ad un cambio degli id
-        # possiamo provare a trasferire i dati o a fixare le statistiche a lungo termine?
-        # pros: se si aggiungono sensori o si modificano non va cambiato nulla qua
-        # cons: gli id dei sensori cambiano se cambia qualcosa a monte
-        # self.entity_id = ENTITY_ID_FORMAT.format(f"pun_{self.fascia.value}")
-
         # ID univoco sensore basato su un nome fisso
         match self.fascia:
             case Fascia.MONO:

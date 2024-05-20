@@ -5,9 +5,16 @@ on:
     branches:
       - master
 
+permissions:
+  contents: read
+
 jobs:
   update_release_draft:
     name: Update release draft
+    permissions:
+      # write permission is required to create a github release
+      contents: write
+      pull-requests: read
     runs-on: ubuntu-latest
     steps:
       - name: Create Release

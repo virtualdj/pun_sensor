@@ -30,7 +30,7 @@ version-resolver:
       - "patch"
   default: patch
 template: |
-  [![Downloads di questa release](https://img.shields.io/github/downloads/moddroid94/pun_sensor/v$RESOLVED_VERSION/total.svg)](https://github.com/moddroid94/pun_sensor/releases/v$RESOLVED_VERSION)
+  [![Downloads di questa release](https://img.shields.io/github/downloads/virtualdj/pun_sensor/v$RESOLVED_VERSION/total.svg)](https://github.com/virtualdj/pun_sensor/releases/v$RESOLVED_VERSION)
   ## Cambiamenti
 
   $CHANGES
