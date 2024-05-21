@@ -14,9 +14,10 @@ categories:
       - 'bugfix'
       - 'bug'
 
-#  - title: '🧰 Maintenance'
-#    label:
-#      - 'dependencies'
+  - title: '🧰 Manutenzione'
+    label:
+      - 'dependencies'
+      - 'documentation'
 
 version-resolver:
   major:
