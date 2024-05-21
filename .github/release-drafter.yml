@@ -1,33 +1,35 @@
-name-template: "v$RESOLVED_VERSION"
-tag-template: "v$RESOLVED_VERSION"
-change-template: "- #$NUMBER $TITLE @$AUTHOR"
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+change-template: '- #$NUMBER $TITLE @$AUTHOR'
 sort-direction: ascending
 categories:
-  - title: "🚀 Nuove funzioni"
+  - title: '🚀 Nuove funzioni'
     labels:
-      - "feature"
-      - "enhancement"
+      - 'feature'
+      - 'enhancement'
 
-  - title: "🐛 Bug Fixes"
+  - title: '🐛 Bug Fixes'
     labels:
-      - "fix"
-      - "bugfix"
-      - "bug"
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
 
-#  - title: '🧰 Maintenance'
-#    label:
-#      - 'dependencies'
+  - title: '🧰 Manutenzione'
+    label:
+      - 'dependencies'
+      - 'documentation'
+      - 'maintenance'
 
 version-resolver:
   major:
     labels:
-      - "major"
+      - 'major'
   minor:
     labels:
-      - "minor"
+      - 'minor'
   patch:
     labels:
-      - "patch"
+      - 'patch'
   default: patch
 template: |
   [![Downloads di questa release](https://img.shields.io/github/downloads/virtualdj/pun_sensor/v$RESOLVED_VERSION/total.svg)](https://github.com/virtualdj/pun_sensor/releases/v$RESOLVED_VERSION)

@@ -20,8 +20,10 @@ from homeassistant.helpers.restore_state import (
     RestoredExtraData,
     RestoreEntity,
 )
+
 from homeassistant.helpers.typing import DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+
 
 from . import PUNDataUpdateCoordinator
 from .const import DOMAIN
@@ -61,6 +63,7 @@ async def async_setup_entry(
     # Aggiunge i sensori ma non aggiorna automaticamente via web
     # per lasciare il tempo ad Home Assistant di avviarsi
     async_add_entities(entities, update_before_add=False)
+
 
 
 def fmt_float(num: float) -> str | float:
@@ -226,6 +229,7 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
         return ["F1", "F2", "F3"]
 
     @property
+
     def native_value(self) -> str | None:
         """Restituisce la fascia corrente come stato"""
         if not self.coordinator.fascia_corrente:
