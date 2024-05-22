@@ -1,8 +1,10 @@
 # Prezzi PUN del mese
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
-[![release][release-badge]][release-url]
-[![Validate with hassfest](https://github.com/virtualdj/pun_sensor/actions/workflows/hassfest.yml/badge.svg?branch=master)](https://github.com/virtualdj/pun_sensor/actions/workflows/hassfest.yml) [![Validate with HACS](https://github.com/virtualdj/pun_sensor/actions/workflows/hacs.yml/badge.svg)](https://github.com/virtualdj/pun_sensor/actions/workflows/hacs.yml)
+
+[![Validate](https://github.com/virtualdj/pun_sensor/actions/workflows/validate.yaml/badge.svg?branch=master)](https://github.com/virtualdj/pun_sensor/actions/workflows/validate.yaml)
+[![release](https://img.shields.io/github/v/release/virtualdj/pun_sensor?style=flat-square)](https://github.com/virtualdj/pun_sensor/releases)
+
 
 Integrazione per **Home Assistant** (basata sullo script [pun-fasce](https://github.com/virtualdj/pun-fasce)) che mostra i prezzi stimati del mese corrente per fasce orarie (F1, F2 e F3 e mono-oraria) nonché la fascia oraria attuale.
 
