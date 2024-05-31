@@ -3,6 +3,7 @@
 # pylint: disable= E1101
 from datetime import timedelta
 import logging
+import random
 from zoneinfo import ZoneInfo
 
 import holidays
@@ -76,8 +77,9 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
 
         # Calcola la data della prossima esecuzione (all'ora definita)
         now = dt_util.now()
+        randminute = random.randrange(0, 59)
         next_update_pun = now.replace(
-            hour=coordinator.scan_hour, minute=0, second=0, microsecond=0
+            hour=coordinator.scan_hour, minute=randminute, second=0, microsecond=0
         )
         if next_update_pun.hour < now.hour:
             # Se l'ora impostata è minore della corrente, schedula a domani
