@@ -17,9 +17,13 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 from homeassistant.helpers.event import async_track_point_in_time, async_call_later
-from homeassistant.setup import SetupPhases, async_pause_setup
 import homeassistant.util.dt as dt_util
 from zoneinfo import ZoneInfo
+
+from awesomeversion.awesomeversion import AwesomeVersion
+from homeassistant.const import __version__ as HA_VERSION
+if (AwesomeVersion(HA_VERSION) >= AwesomeVersion("2024.5.0")):
+    from homeassistant.setup import SetupPhases, async_pause_setup
 
 from .const import (
     DOMAIN,
@@ -47,10 +51,11 @@ PLATFORMS: list[str] = ["sensor"]
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     """Impostazione dell'integrazione da configurazione Home Assistant"""
 
-    # Carica le dipendenze di holidays in background
-    with async_pause_setup(hass, SetupPhases.WAIT_IMPORT_PACKAGES):
-        await hass.async_add_import_executor_job(holidays.IT)
-    
+    # Carica le dipendenze di holidays in background per evitare errori nel log
+    if (AwesomeVersion(HA_VERSION) >= AwesomeVersion("2024.5.0")):
+        with async_pause_setup(hass, SetupPhases.WAIT_IMPORT_PACKAGES):
+            await hass.async_add_import_executor_job(holidays.IT)
+
     # Salva il coordinator nella configurazione
     coordinator = PUNDataUpdateCoordinator(hass, config)
     hass.data.setdefault(DOMAIN, {})[config.entry_id] = coordinator
