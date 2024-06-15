@@ -1,27 +1,26 @@
 """Prezzi PUN del mese"""
 
 # pylint: disable= E1101
-from datetime import timedelta
+
 import logging
 import random
-from zoneinfo import ZoneInfo
+from datetime import timedelta
 
+from zoneinfo import ZoneInfo
 import holidays
 
+import homeassistant.util.dt as dt_util
+from awesomeversion.awesomeversion import AwesomeVersion
 from homeassistant.config_entries import ConfigEntry
-
+from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_call_later, async_track_point_in_time
-from awesomeversion.awesomeversion import AwesomeVersion
-from homeassistant.const import __version__ as HA_VERSION
-if (AwesomeVersion(HA_VERSION) >= AwesomeVersion("2024.5.0")):
-    from homeassistant.setup import SetupPhases, async_pause_setup
-
-import homeassistant.util.dt as dt_util
-
 
 from .const import CONF_ACTUAL_DATA_ONLY, CONF_SCAN_HOUR, DOMAIN
 from .coordinator import PUNDataUpdateCoordinator
+
+if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2024.5.0"):
+    from homeassistant.setup import SetupPhases, async_pause_setup
 
 
 _LOGGER = logging.getLogger(__name__)
