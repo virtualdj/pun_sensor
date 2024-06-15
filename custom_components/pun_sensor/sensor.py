@@ -115,6 +115,8 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         if len(self.coordinator.pun_data.pun[self.fascia]) > 0:
             self._available = True
             self._native_value = self.coordinator.pun_values.value[self.fascia]
+        else:
+            self._available = False
         # special case for F23 because we don't have them in the dict of values
         # can we compare against calculated value? if it's not 0 then it's available?
         if (
