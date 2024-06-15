@@ -14,7 +14,7 @@ from homeassistant.helpers.restore_state import (
     ExtraStoredData,
     RestoredExtraData
 )
-from typing import Any, Dict, override
+from typing import Any, Dict
 
 from . import PUNDataUpdateCoordinator
 from .const import (
@@ -234,7 +234,6 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
         """Restituisce la fascia corrente come stato"""
         return decode_fascia(self.coordinator.fascia_corrente)
 
-    @override
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         return {
