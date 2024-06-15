@@ -74,14 +74,13 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
     def clean_tokens(self):
-        """Clear schedule tokens, if any."""
-        # Annulla eventuali schedulazioni attive
+        """Annulla eventuali schedulazioni attive."""
         if self.schedule_token is not None:
             self.schedule_token()
             self.schedule_token = None
 
     async def _async_update_data(self):
-        """Aggiornamento dati a intervalli prestabiliti"""
+        """Aggiornamento dati a intervalli prestabiliti."""
 
         # Calcola l'intervallo di date per il mese corrente
         date_end = dt_util.now().date()
