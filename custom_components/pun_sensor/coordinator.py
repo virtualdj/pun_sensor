@@ -97,7 +97,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # URL del sito Mercato elettrico
         download_url = f"https://gme.mercatoelettrico.org/DesktopModules/GmeDownload/API/ExcelDownload/downloadzipfile?DataInizio={start_date_param}&DataFine={end_date_param}&Date={end_date_param}&Mercato=MGP&Settore=Prezzi&FiltroDate=InizioFine"
 
-        # imposta gli header della richiesta
+        # Imposta gli header della richiesta
         heads = {
             "moduleid": "12103",
             "referrer": "https://gme.mercatoelettrico.org/en-us/Home/Results/Electricity/MGP/Download?valore=Prezzi",
@@ -147,14 +147,14 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Estrae i dati dall'archivio
         self.pun_data = extract_xml(archive, self.pun_data)
 
-        # per ogni fascia, calcola il valore del pun
+        # Per ogni fascia, calcola il valore del pun
         for fascia, value_list in self.pun_data.pun.items():
-            # se abbiamo valori nella fascia
+            # Se abbiamo valori nella fascia
             if len(value_list) > 0:
-                # calcola la media dei pun e aggiorna il valore del pun attuale per la fascia corrispondente
+                # Calcola la media dei pun e aggiorna il valore del pun attuale per la fascia corrispondente
                 self.pun_values.value[fascia] = mean(self.pun_data.pun[fascia])
             else:
-                # we skip empy dicts
+                # Skippiamo i dict se vuoti
                 pass
         # Calcola la fascia F23 (a partire da F2 ed F3)
         # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:
@@ -181,7 +181,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         return
 
     async def update_fascia(self, now=None):
-        """Aggiorna la fascia oraria corrente"""
+        """Aggiorna la fascia oraria corrente."""
 
         # Scrive l'ora corrente (a scopi di debug)
         _LOGGER.debug(
@@ -227,7 +227,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
             # Se non ci sono eccezioni, ha avuto successo
             self.web_retries = 0
-        # errore nel fetch dei dati, if request not 200
+        # Errore nel fetch dei dati se la response non e' 200
         # pylint: disable=W0718
         # Broad Except catching
         except (Exception, UpdateFailed, ServerConnectionError) as e:
