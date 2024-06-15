@@ -204,7 +204,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
         _LOGGER.info(
-            "Nuova fascia corrente: F%s (prossima: F%s) \nProssimo cambio fascia: %s",
+            "Nuova fascia corrente: F%s (prossima: F%s alle %s)",
             self.fascia_corrente,
             self.fascia_successiva,
             self.prossimo_cambio_fascia.strftime("%a %d/%m/%Y %H:%M:%S %z"),
