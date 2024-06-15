@@ -239,7 +239,7 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
         return {
             "fascia_successiva": self.coordinator.fascia_successiva.value
             if self.coordinator.fascia_successiva
-            else "None",
+            else None,
             "inizio_fascia_successiva": self.coordinator.prossimo_cambio_fascia,
             "termine_fascia_successiva": self.coordinator.termine_prossima_fascia,
         }
