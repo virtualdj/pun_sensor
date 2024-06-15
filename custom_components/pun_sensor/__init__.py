@@ -84,6 +84,7 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
 
         # Calcola la data della prossima esecuzione (all'ora definita)
         now = dt_util.now()
+        # Aggiunge un numero random di minuti alla call per evitare di sovraccaricare i server API
         randminute = random.randrange(0, 59)
         next_update_pun = now.replace(
             hour=coordinator.scan_hour, minute=randminute, second=0, microsecond=0
