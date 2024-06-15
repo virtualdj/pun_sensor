@@ -118,9 +118,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
             # Se la richiesta NON e' andata a buon fine ritorna l'errore subito
             if response.status != 200:
-                _LOGGER.error("Request Failed with code %s", response.status)
+                _LOGGER.error("Richiesta fallita con errore %s", response.status)
                 raise ServerConnectionError(
-                    f"Request failed with error {response.status}"
+                    f"Richiesta fallita con errore {response.status}"
                 )
 
             # La richiesta e' andata a buon fine, tenta l'estrazione
@@ -130,7 +130,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Ritorna error se l'output non è uno ZIP, o ha un errore IO
             except (zipfile.BadZipfile, OSError) as e:  # not a zip:
                 _LOGGER.error(
-                    "Error failed download. url %s, length %s, response %s",
+                    "Download fallito con URL: %s, lunghezza %s, risposta %s",
                     download_url,
                     response.content_length,
                     response.status,
@@ -204,12 +204,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
         _LOGGER.info(
-            "Nuova fascia corrente: F%s (prossima: F%s)",
+            "Nuova fascia corrente: F%s (prossima: F%s) \nProssimo cambio fascia: %s",
             self.fascia_corrente,
             self.fascia_successiva,
-        )
-        _LOGGER.info(
-            "Prossimo cambio fascia: %s",
             self.prossimo_cambio_fascia.strftime("%a %d/%m/%Y %H:%M:%S %z"),
         )
 
@@ -253,7 +250,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             if retry_in_minutes > 0:
                 # Minuti dopo
                 _LOGGER.warning(
-                    "Errore durante il fetch dei dati, nuovo tentativo tra %s minut%s.",
+                    "Errore durante l'aggiornamento dei dati, nuovo tentativo tra %s minut%s.",
                     retry_in_minutes,
                     "o" if retry_in_minutes == 1 else "i",
                     exc_info=e,
@@ -279,7 +276,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                 )
             # Esce e attende la prossima schedulazione
             return
-        
+
         # Notifica che i dati PUN sono stati aggiornati con successo
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
 
