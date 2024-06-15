@@ -235,7 +235,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             if self.web_retries < 4:
                 # 10 minuti dopo il primo tentativo, poi multipli di 60, max 180 min in 4 tentativi
                 retry_in_minutes = 10 if self.web_retries < 1 else 60 * self.web_retries
-                self.web_retries = +1
+                self.web_retries += 1
             else:
                 # Sesto errore, tentativi esauriti
                 self.web_retries = 0
