@@ -1,4 +1,4 @@
-"""Coordinator for pun_sensor"""
+"""Coordinator per pun_sensor"""
 
 # pylint: disable=W0613
 from datetime import date, datetime, timedelta
