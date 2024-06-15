@@ -21,6 +21,7 @@ from homeassistant.helpers.restore_state import (
     RestoreEntity,
 )
 
+
 from homeassistant.helpers.typing import DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
