@@ -4,4 +4,4 @@ set -e
 
 cd "$(dirname "$0")/../.."
 
-python3 -m pip --disable-pip-version-check install --upgrade git+https://github.com/home-assistant/home-assistant.git@dev
+uv pip install --system --prefix "/home/vscode/.local/" --upgrade git+https://github.com/home-assistant/home-assistant.git@dev
