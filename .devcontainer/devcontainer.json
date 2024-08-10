@@ -1,0 +1,62 @@
+{
+  "name": "Home Assistant Integration Dev",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "postCreateCommand": ".devcontainer/scripts/setup",
+  "containerEnv": {
+    "PYTHONASYNCIODEBUG": "1"
+  },
+  "runArgs": ["-e", "GIT_EDITOR=code --wait"],
+  "forwardPorts": [
+        8123
+    ],
+  "portsAttributes": {
+      "8123": {
+          "label": "Home Assistant",
+          "onAutoForward": "notify"
+      }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "github.vscode-pull-request-github",
+        "ms-python.pylint",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "redhat.vscode-yaml",
+        "esbenp.prettier-vscode",
+        "ryanluker.vscode-coverage-gutters",
+        "thibault-vanderseypen.i18n-json-editor"
+      ],
+      "settings": {
+        "files.eol": "\n",
+        "editor.tabSize": 4,
+        "pylint.importStrategy": "fromEnvironment",
+        //"python.pythonPath": "/usr/local/bin/python3",
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.analysis.autoSearchPaths": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true
+        },
+        "editor.formatOnPaste": false,
+        "editor.formatOnSave": true,
+        "editor.formatOnType": true,
+        "files.trimTrailingWhitespace": true,
+        "[markdown]": {
+          "files.trimTrailingWhitespace": false
+        },
+        "i18nJsonEditor.forceKeyUPPERCASE": false,
+        "i18nJsonEditor.supportedFolders": [
+          "translations",
+          "i18n"
+        ]
+      }
+    }
+  },
+  "remoteUser": "vscode",
+  "features": {
+      "ghcr.io/devcontainers/features/rust:1": {}
+      //"ghcr.io/devcontainers-contrib/features/ffmpeg-apt-get:1": {}
+  }
+}
