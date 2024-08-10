@@ -4,7 +4,7 @@ default_config:
 logger:
   default: info
   logs:
-    custom_components.pun_test: debug
+    custom_components.pun_sensor: debug
 
 # Disable ffmpeg
 ffmpeg:
