@@ -27,7 +27,7 @@ Se la casella di controllo _Usa solo dati reali ad inizio mese_ è **attivata**,
 
 ### Aggiornamento manuale
 
-È possibile forzare un **aggiornamento manuale** richiamando il servizio *Home Assistant Core Integration: Aggiorna entità* (`homeassistant.update_entity`) e passando come destinazione una qualsiasi entità tra quelle fornite da questa integrazione: questo causerà chiaramente un nuovo download dei dati.
+È possibile forzare un **aggiornamento manuale** richiamando il servizio _Home Assistant Core Integration: Aggiorna entità_ (`homeassistant.update_entity`) e passando come destinazione una qualsiasi entità tra quelle fornite da questa integrazione: questo causerà chiaramente un nuovo download dei dati.
 
 ### Aspetto dei dati
 
@@ -46,16 +46,16 @@ Di seguito un esempio di un sensore configurato manualmente modificando il file 
 template:
   - sensor:
       - unique_id: prezzo_attuale_energia_al_dettaglio
-        name: 'Prezzo attuale energia al dettaglio'
+        name: "Prezzo attuale energia al dettaglio"
         icon: mdi:currency-eur
-        unit_of_measurement: '€/kWh'
+        unit_of_measurement: "€/kWh"
         state: >
           {{ (1.1 * (states('sensor.pun_prezzo_fascia_corrente')|float(0) + 0.0087 + 0.04 + 0.0227))|round(3) }}
 ```
 
 ### Fascia F23
 
-A partire dalla versione v0.5.0, è stato aggiunto il sensore relativo al calcolo della fascia F23, cioè quella contrapposta alla F1 nella bioraria. Il calcolo non è documentato molto nei vari siti (si veda [QUI](https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1806864251)) e non è affatto la media dei prezzi in F2 e F3 come si potrebbe pensare: c'è invece una percentuale fissa, [come ha scoperto *virtualj*](https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806).
+A partire dalla versione v0.5.0, è stato aggiunto il sensore relativo al calcolo della fascia F23, cioè quella contrapposta alla F1 nella bioraria. Il calcolo non è documentato molto nei vari siti (si veda [QUI](https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1806864251)) e non è affatto la media dei prezzi in F2 e F3 come si potrebbe pensare: c'è invece una percentuale fissa, [come ha scoperto _virtualj_](https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806).
 Pertanto, seppur questo metodo non sia ufficiale, è stato implementato perché i risultati corrispondono sempre alle tabelle pubblicate online.
 
 ### In caso di problemi
@@ -92,4 +92,4 @@ Ovviamente non ho alcuna certezza che tutto questo sia la maniera giusta di proc
 - La [PR #99213](https://github.com/home-assistant/core/pull/99213/files) di Home Assistant per il suggerimento di usare `async_call_later` anziché sommare il timedelta all'ora corrente
 - La [PR #76793](https://github.com/home-assistant/core/pull/76793/files) di Home Assistant per un esempio di come usare il [cancellation token](https://developers.home-assistant.io/docs/integration_listen_events/#available-event-helpers) restituito da `async_track_point_in_time`
 - I commit [1](https://github.com/home-assistant/core/commit/c574d86ddbafd6c18995ad9efb297fda3ce4292c) e [2](https://github.com/home-assistant/core/commit/36e7689d139d0f517bbdd8f8f2c11e18936d27b3) per risolvere il warning nei log `[homeassistant.util.loop] Detected blocking call to import_module inside the event loop by custom integration` comparso con la versione 2024.5.0 di Home Assistant e dovuto alle librerie importate
-- La configurazione del _devcontainer_ con script ispirati dalla repository [astrandb/viva](https://github.com/astrandb/viva/tree/main/scripts) e da post sulla [community Home Assistant](https://community.home-assistant.io/t/developing-home-assistant-core-in-a-vscode-devcontainer/235650/36) o sulla versione [francofona](https://www.hacf.fr/dev_tuto_1_environnement/)
+- La configurazione del _devcontainer_ con script ispirati dalla repository [astrandb/viva](https://github.com/astrandb/viva/tree/main/scripts) e da post sulla [community Home Assistant](https://community.home-assistant.io/t/developing-home-assistant-core-in-a-vscode-devcontainer/235650/36); utili anche [questo](https://www.hacf.fr/dev_tuto_1_environnement/) e [questo](https://svrooij.io/2023/01/18/home-assistant-component/)
