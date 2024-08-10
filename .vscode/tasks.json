@@ -1,0 +1,47 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run Home Assistant Core",
+      "type": "shell",
+      "command": ".devcontainer/scripts/develop",
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop Home Assistant Core",
+      "type": "shell",
+      "command": "pkill hass ; exit 0",
+      "problemMatcher": []
+    },
+    {
+      "label": "Restart Home Assistant Core",
+      "type": "shell",
+      "command": "pkill hass ; .devcontainer/scripts/develop",
+      "problemMatcher": []
+    },
+    {
+      "label": "Upgrade Home Assistant to latest (beta)",
+      "type": "shell",
+      "command": ".devcontainer/scripts/upgrade",
+      "problemMatcher": []
+    },
+    {
+      "label": "Load Home Assistant from github - dev branch",
+      "type": "shell",
+      "command": ".devcontainer/scripts/dev-branch",
+      "problemMatcher": []
+    },
+    {
+      "label": "Load specific version of Home Assistant",
+      "type": "shell",
+      "command": ".devcontainer/scripts/specific-version",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint with ruff",
+      "type": "shell",
+      "command": ".devcontainer/scripts/lint",
+      "problemMatcher": []
+    }
+  ]
+}
