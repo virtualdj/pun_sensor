@@ -7,6 +7,7 @@ PUN_FASCIA_F1 = 1
 PUN_FASCIA_F2 = 2
 PUN_FASCIA_F3 = 3
 PUN_FASCIA_F23 = 4
+PZO = 5
 
 # Tipi di aggiornamento
 COORD_EVENT = "coordinator_event"

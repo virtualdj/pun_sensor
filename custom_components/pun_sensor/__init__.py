@@ -32,6 +32,7 @@ from .const import (
     PUN_FASCIA_F1,
     PUN_FASCIA_F2,
     PUN_FASCIA_F3,
+    PZO,
     CONF_SCAN_HOUR,
     CONF_ACTUAL_DATA_ONLY,
     COORD_EVENT,
@@ -150,8 +151,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Inizializza i valori di default
         self.web_retries = 0
         self.schedule_token = None
-        self.pun = [0.0, 0.0, 0.0, 0.0, 0.0]
-        self.orari = [0, 0, 0, 0, 0]
+        self.pun = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        self.orari = [0, 0, 0, 0, 0, 0]
         self.fascia_corrente = None
         self.prossimo_cambio_fascia = None
         self.termine_prossima_fascia = None
@@ -229,6 +230,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         f1 = []
         f2 = []
         f3 = []
+        pzo = []
 
         # Esamina ogni file XML nello ZIP (ordinandoli prima)
         for fn in sorted(archive.namelist()):
@@ -257,11 +259,17 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                 prezzo_string = prezzo_string.replace('.','').replace(',','.')
                 prezzo = float(prezzo_string) / 1000
 
+                # Estrae il prezzo zonale orario nord dall'XML in un float
+                pzo_string = prezzi.find('NORD').text
+                pzo_string = pzo_string.replace('.','').replace(',','.')
+                pzo_float = float(pzo_string) / 1000
+
                 # Estrae la fascia oraria
                 fascia = get_fascia_for_xml(dat_date, festivo, ora)
 
                 # Calcola le statistiche
                 mono.append(prezzo)
+                pzo.append(pzo_float)
                 if fascia == 3:
                     f3.append(prezzo)
                 elif fascia == 2:
@@ -274,6 +282,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.orari[PUN_FASCIA_F1] = len(f1)
         self.orari[PUN_FASCIA_F2] = len(f2)
         self.orari[PUN_FASCIA_F3] = len(f3)
+        self.orari[PZO] = len(pzo)
         if self.orari[PUN_FASCIA_MONO] > 0:
             self.pun[PUN_FASCIA_MONO] = mean(mono)
         if self.orari[PUN_FASCIA_F1] > 0:
@@ -282,6 +291,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.pun[PUN_FASCIA_F2] = mean(f2)
         if self.orari[PUN_FASCIA_F3] > 0:
             self.pun[PUN_FASCIA_F3] = mean(f3)
+        if self.orari[PZO] > 0:
+            self.pun[PZO] = mean(pzo)
 
         # Calcola la fascia F23 (a partire da F2 ed F3)
         # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:

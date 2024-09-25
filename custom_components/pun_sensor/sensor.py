@@ -24,6 +24,7 @@ from .const import (
     PUN_FASCIA_F1,
     PUN_FASCIA_F2,
     PUN_FASCIA_F3,
+    PZO
 )
 
 from awesomeversion.awesomeversion import AwesomeVersion
@@ -50,6 +51,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry,
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_F1))
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_F2))
     entities.append(PUNSensorEntity(coordinator, PUN_FASCIA_F3))
+    entities.append(PUNSensorEntity(coordinator, PZO))
     entities.append(FasciaPUNSensorEntity(coordinator))
     entities.append(PrezzoFasciaPUNSensorEntity(coordinator))
 
@@ -100,6 +102,8 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
             self.entity_id = ENTITY_ID_FORMAT.format('pun_mono_orario')
         elif (self.tipo == PUN_FASCIA_F23):
             self.entity_id = ENTITY_ID_FORMAT.format('pun_fascia_f23')
+        elif (self.tipo == PZO):
+            self.entity_id = ENTITY_ID_FORMAT.format('pzo')
         else:
             self.entity_id = None
         self._attr_unique_id = self.entity_id
