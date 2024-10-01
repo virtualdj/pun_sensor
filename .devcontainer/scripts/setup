@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/../.."
+
+# Install libpcap and libturbojpeg to avoid errors in Home Assistant
+sudo apt-get update
+sudo apt-get install -y libpcap-dev libturbojpeg0
+
+# Install uv
+python3 -m pip install uv --user --disable-pip-version-check
+
+# Install Home Assistant dependencies
+uv pip install --system --prefix "/home/vscode/.local/" --requirement requirements_ha.txt
+
+# Install custom_component dependencies
+uv pip install --system --prefix "/home/vscode/.local/" --requirement requirements.txt
+
+# Set workspace directory as safe in git
+git config --global --add safe.directory ${PWD}
+#pre-commit install
+
+# Restart Python Language Server in VSCode to see the correct linting
+echo "*********************************************"
+echo "* To fix linting in VSCode, press F1 and    *"
+echo "* choose 'Python: Restart Language Server'  *"
+echo "*********************************************"
