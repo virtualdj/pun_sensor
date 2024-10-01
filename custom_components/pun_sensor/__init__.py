@@ -171,8 +171,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             date_start = date_start - timedelta(days=3)
 
         # URL del sito Mercato elettrico
-        LOGIN_URL = 'https://www.mercatoelettrico.org/It/Tools/Accessodati.aspx?ReturnUrl=%2fIt%2fdownload%2fDownloadDati.aspx%3fval%3dMGP_Prezzi&val=MGP_Prezzi'
-        DOWNLOAD_URL = 'https://www.mercatoelettrico.org/It/download/DownloadDati.aspx?val=MGP_Prezzi'
+        LOGIN_URL = 'https://storico.mercatoelettrico.org/It/Tools/Accessodati.aspx?ReturnUrl=%2fIt%2fdownload%2fDownloadDati.aspx%3fval%3dMGP_Prezzi&val=MGP_Prezzi'
+        DOWNLOAD_URL = 'https://storico.mercatoelettrico.org/It/download/DownloadDati.aspx?val=MGP_Prezzi'
         
         # Apre la pagina per generare i cookie e i campi nascosti
         _LOGGER.debug('Connessione a URL login.')
