@@ -100,7 +100,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
             case Fascia.F23:
                 self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f23")
             case _:
-                self.entity_id = "none"
+                self.entity_id = None
         self._attr_unique_id = self.entity_id
         self._attr_has_entity_name = True
 
@@ -175,13 +175,13 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         return "mdi:chart-line"
 
     @property
-    def name(self) -> str:
+    def name(self) -> str | None:
         """Restituisce il nome del sensore"""
         if self.fascia == Fascia.MONO:
             return "PUN mono-orario"
         if self.fascia:
             return f"PUN fascia {self.fascia.value}"
-        return "None"
+        return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -234,7 +234,7 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
     def native_value(self) -> str | None:
         """Restituisce la fascia corrente come stato"""
         if not self.coordinator.fascia_corrente:
-            return "None"
+            return None
         return self.coordinator.fascia_corrente.value
 
     @property
