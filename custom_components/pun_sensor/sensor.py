@@ -113,19 +113,24 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 
     def _handle_coordinator_update(self) -> None:
         """Gestisce l'aggiornamento dei dati dal coordinator."""
-        if len(self.coordinator.pun_data.pun[self.fascia]) > 0:
-            self._available = True
-            self._native_value = self.coordinator.pun_values.value[self.fascia]
+        if self.fascia != Fascia.F23:
+            if len(self.coordinator.pun_data.pun[self.fascia]) > 0:
+                self._available = True
+                self._native_value = self.coordinator.pun_values.value[self.fascia]
+            else:
+                self._available = False
         else:
-            self._available = False
-        # special case for F23 because we don't have them in the dict of values
-        # can we compare against calculated value? if it's not 0 then it's available?
-        if (
-            self.fascia == Fascia.F23
-            and self.coordinator.pun_values.value[self.fascia] != 0
-        ):
-            self._available = True
-            self._native_value = self.coordinator.pun_values.value[self.fascia]
+            # Caso speciale per fascia F23: affinché sia disponibile devono
+            # esserci dati sia sulla fascia F2 che sulla F3, dato che è
+            # calcolata a partire da questi
+            if (
+                len(self.coordinator.pun_data.pun[Fascia.F2])
+                and len(self.coordinator.pun_data.pun[Fascia.F3])
+            ) > 0:
+                self._available = True
+                self._native_value = self.coordinator.pun_values.value[self.fascia]
+            else:
+                self._available = False
         self.async_write_ha_state()
 
     @property
