@@ -6,7 +6,6 @@ import random
 
 from awesomeversion.awesomeversion import AwesomeVersion
 import holidays
-from zoneinfo import ZoneInfo
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import __version__ as HA_VERSION
@@ -22,9 +21,6 @@ if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2024.5.0"):
 
 # Ottiene il logger
 _LOGGER = logging.getLogger(__name__)
-
-# Usa sempre il fuso orario italiano (i dati del sito sono per il mercato italiano)
-tz_pun = ZoneInfo("Europe/Rome")
 
 # Definisce i tipi di entità
 PLATFORMS: list[str] = ["sensor"]
