@@ -51,7 +51,7 @@ async def async_setup_entry(
         "2023.3.0"
     )
 
-    # Crea i sensori dei valori del pun(legati al coordinator)
+    # Crea i sensori dei valori del pun (legati al coordinator)
     entities = []
     available_puns = PunValues()
     for fascia in available_puns.value:
