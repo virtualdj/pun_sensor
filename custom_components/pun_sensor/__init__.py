@@ -1,6 +1,4 @@
-"""Prezzi PUN del mese"""
-
-# pylint: disable= E1101
+"""Prezzi PUN del mese."""
 
 from datetime import timedelta
 import logging
@@ -22,7 +20,7 @@ from .coordinator import PUNDataUpdateCoordinator
 if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2024.5.0"):
     from homeassistant.setup import SetupPhases, async_pause_setup
 
-
+# Ottiene il logger
 _LOGGER = logging.getLogger(__name__)
 
 # Usa sempre il fuso orario italiano (i dati del sito sono per il mercato italiano)
@@ -38,7 +36,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     # Carica le dipendenze di holidays in background per evitare errori nel log
     if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2024.5.0"):
         with async_pause_setup(hass, SetupPhases.WAIT_IMPORT_PACKAGES):
-            await hass.async_add_import_executor_job(holidays.IT)  # type: ignore
+            await hass.async_add_import_executor_job(holidays.IT)
 
     # Salva il coordinator nella configurazione
     coordinator = PUNDataUpdateCoordinator(hass, config)
@@ -61,7 +59,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
 
 
 async def async_unload_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
-    """Rimozione dell'integrazione da Home Assistant"""
+    """Rimozione dell'integrazione da Home Assistant."""
 
     # Scarica i sensori (disabilitando di conseguenza il coordinator)
     unload_ok = await hass.config_entries.async_unload_platforms(config, PLATFORMS)
@@ -72,7 +70,7 @@ async def async_unload_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
 
 
 async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
-    """Modificate le opzioni da Home Assistant"""
+    """Modificate le opzioni da Home Assistant."""
 
     # Recupera il coordinator
     coordinator = hass.data[DOMAIN][config.entry_id]
@@ -84,6 +82,7 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
 
         # Calcola la data della prossima esecuzione (all'ora definita)
         now = dt_util.now()
+
         # Aggiunge un numero random di minuti alla call per evitare di sovraccaricare i server API
         randminute = random.randrange(0, 59)
         next_update_pun = now.replace(

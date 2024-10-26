@@ -1,15 +1,14 @@
-"""pun sensor entity"""
+"""Implementazione sensori di pun_sensor."""
 
-# pylint: disable=W0613, W0601, W0239
 from typing import Any
 
 from awesomeversion.awesomeversion import AwesomeVersion
 
 from homeassistant.components.sensor import (
     ENTITY_ID_FORMAT,
-    SensorDeviceClass,  # type: ignore #superseeded by HA rules
+    SensorDeviceClass,
     SensorEntity,
-    SensorStateClass,  # type: ignore #superseeded by HA rules
+    SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CURRENCY_EURO, UnitOfEnergy, __version__ as HA_VERSION
@@ -20,16 +19,12 @@ from homeassistant.helpers.restore_state import (
     RestoredExtraData,
     RestoreEntity,
 )
-
-
 from homeassistant.helpers.typing import DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-
 from . import PUNDataUpdateCoordinator
 from .const import DOMAIN
-
-from .interfaces import PunValues, Fascia
+from .interfaces import Fascia, PunValues
 
 ATTR_ROUNDED_DECIMALS = "rounded_decimals"
 
@@ -40,22 +35,22 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
-    """Inizializza e crea i sensori"""
+    """Inizializza e crea i sensori."""
 
     # Restituisce il coordinator
     coordinator = hass.data[DOMAIN][config.entry_id]
 
     # Verifica la versione di Home Assistant
-    global has_suggested_display_precision
+    global has_suggested_display_precision  # noqa: PLW0603
     has_suggested_display_precision = AwesomeVersion(HA_VERSION) >= AwesomeVersion(
         "2023.3.0"
     )
 
     # Crea i sensori dei valori del pun (legati al coordinator)
     entities = []
-    available_puns = PunValues()
-    for fascia in available_puns.value:
-        entities.append(PUNSensorEntity(coordinator, fascia))
+    entities.extend(
+        PUNSensorEntity(coordinator, fascia) for fascia in PunValues().value
+    )
 
     # Crea sensori aggiuntivi
     entities.append(FasciaPUNSensorEntity(coordinator))
@@ -81,6 +76,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     """Sensore PUN relativo al prezzo medio mensile per fasce."""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator, fascia: Fascia) -> None:
+        """Inizializza il sensore."""
         super().__init__(coordinator)
 
         # Inizializza coordinator e tipo
@@ -114,23 +110,28 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     def _handle_coordinator_update(self) -> None:
         """Gestisce l'aggiornamento dei dati dal coordinator."""
         if self.fascia != Fascia.F23:
+            # Tutte le fasce tranne F23
             if len(self.coordinator.pun_data.pun[self.fascia]) > 0:
+                # Ci sono dati, sensore disponibile
                 self._available = True
                 self._native_value = self.coordinator.pun_values.value[self.fascia]
             else:
+                # Non ci sono dati, sensore non disponibile
                 self._available = False
-        else:
+
+        elif len(self.coordinator.pun_data.pun[Fascia.F2]) > 0 and len(
+            self.coordinator.pun_data.pun[Fascia.F3] > 0
+        ):
             # Caso speciale per fascia F23: affinché sia disponibile devono
-            # esserci dati sia sulla fascia F2 che sulla F3, dato che è
-            # calcolata a partire da questi
-            if (
-                len(self.coordinator.pun_data.pun[Fascia.F2])
-                and len(self.coordinator.pun_data.pun[Fascia.F3])
-            ) > 0:
-                self._available = True
-                self._native_value = self.coordinator.pun_values.value[self.fascia]
-            else:
-                self._available = False
+            # esserci dati sia sulla fascia F2 che sulla F3,
+            # visto che è calcolata a partire da questi
+            self._available = True
+            self._native_value = self.coordinator.pun_values.value[self.fascia]
+        else:
+            # Non ci sono dati, sensore non disponibile
+            self._available = False
+
+        # Aggiorna lo stato di Home Assistant
         self.async_write_ha_state()
 
     @property
@@ -172,6 +173,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 
     @property
     def state(self) -> str | float:
+        """Stato del sensore."""
         return fmt_float(self.native_value)
 
     @property
@@ -181,7 +183,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 
     @property
     def name(self) -> str | None:
-        """Restituisce il nome del sensore"""
+        """Restituisce il nome del sensore."""
         if self.fascia == Fascia.MONO:
             return "PUN mono-orario"
         if self.fascia:
@@ -203,6 +205,7 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
     """Sensore che rappresenta la fascia PUN corrente."""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
+        """Inizializza il sensore."""
         super().__init__(coordinator)
 
         # Inizializza coordinator
@@ -229,21 +232,24 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
 
     @property
     def device_class(self) -> SensorDeviceClass | None:
+        """Classe del sensore."""
         return SensorDeviceClass.ENUM
 
     @property
     def options(self) -> list[str] | None:
+        """Possibili stati del sensore."""
         return ["F1", "F2", "F3"]
 
     @property
     def native_value(self) -> str | None:
-        """Restituisce la fascia corrente come stato"""
+        """Restituisce la fascia corrente come stato."""
         if not self.coordinator.fascia_corrente:
             return None
         return self.coordinator.fascia_corrente.value
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Attributi aggiuntivi del sensore."""
         return {
             "fascia_successiva": self.coordinator.fascia_successiva.value
             if self.coordinator.fascia_successiva
@@ -267,6 +273,7 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
     """Sensore che rappresenta il prezzo PUN della fascia corrente."""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
+        """Inizializza il sensore."""
         super().__init__(coordinator)
 
         # ID univoco sensore basato su un nome fisso
@@ -342,6 +349,7 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
 
     @property
     def state(self) -> str | float:
+        """Stato del sensore."""
         return fmt_float(self.native_value)
 
     @property

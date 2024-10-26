@@ -1,19 +1,20 @@
-"""utils"""
+"""Metodi di utilità generale."""
 
-# pylint: disable= E1101
-import logging
 from datetime import date, datetime, timedelta
+import logging
 from zipfile import ZipFile
 
 import defusedxml.ElementTree as et
 import holidays
+
 from .interfaces import Fascia, PunData
 
+# Ottiene il logger
 _LOGGER = logging.getLogger(__name__)
 
 
 def get_fascia_for_xml(data: date, festivo: bool, ora: int) -> Fascia:
-    """Restituisce la fascia oraria di un determinato giorno/ora"""
+    """Restituisce la fascia oraria di un determinato giorno/ora."""
     # F1 = lu-ve 8-19
     # F2 = lu-ve 7-8, lu-ve 19-23, sa 7-23
     # F3 = lu-sa 0-7, lu-sa 23-24, do, festivi
@@ -40,7 +41,7 @@ def get_fascia(dataora: datetime) -> tuple[Fascia, datetime]:
     """Restituisce la fascia della data/ora indicata e la data del prossimo cambiamento."""
 
     # Verifica se la data corrente è un giorno con festività
-    festivo = dataora in holidays.IT()  # type: ignore
+    festivo = dataora in holidays.IT()
 
     # Identifica la fascia corrente
     # F1 = lu-ve 8-19
@@ -134,7 +135,7 @@ def get_next_date(
     )
 
     if feriale:
-        while (prossima in holidays.IT()) or (prossima.weekday() == 6):  # type: ignore
+        while (prossima in holidays.IT()) or (prossima.weekday() == 6):
             prossima += timedelta(days=1)
 
     return prossima
@@ -145,9 +146,10 @@ def extract_xml(archive: ZipFile, pun_data: PunData) -> PunData:
 
     Returns:
     List[ list[MONO: float], list[F1: float], list[F2: float], list[F3: float] ]
+
     """
     # Carica le festività
-    it_holidays = holidays.IT()  # type: ignore
+    it_holidays = holidays.IT()
 
     # Esamina ogni file XML nello ZIP (ordinandoli prima)
     for fn in sorted(archive.namelist()):
@@ -158,15 +160,13 @@ def extract_xml(archive: ZipFile, pun_data: PunData) -> PunData:
         xml_root = xml_tree.getroot()
 
         # Estrae la data dal primo elemento (sarà identica per gli altri)
-        dat_string = (
-            xml_root.find("Prezzi").find("Data").text  # type: ignore
-        )  # YYYYMMDD # type: ignore
+        dat_string = xml_root.find("Prezzi").find("Data").text  # YYYYMMDD
 
         # Converte la stringa giorno in data
         dat_date = date(
-            int(dat_string[0:4]),  # type: ignore
-            int(dat_string[4:6]),  # type: ignore
-            int(dat_string[6:8]),  # type: ignore
+            int(dat_string[0:4]),
+            int(dat_string[4:6]),
+            int(dat_string[6:8]),
         )
 
         # Verifica la festività
@@ -175,11 +175,11 @@ def extract_xml(archive: ZipFile, pun_data: PunData) -> PunData:
         # Estrae le rimanenti informazioni
         for prezzi in xml_root.iter("Prezzi"):
             # Estrae l'ora dall'XML
-            ora = int(prezzi.find("Ora").text) - 1  # 1..24 # type: ignore
+            ora = int(prezzi.find("Ora").text) - 1  # 1..24
 
             # Estrae il prezzo PUN dall'XML in un float
-            prezzo_string = prezzi.find("PUN").text  # type: ignore
-            prezzo_string = prezzo_string.replace(".", "").replace(",", ".")  # type: ignore
+            prezzo_string = prezzi.find("PUN").text
+            prezzo_string = prezzo_string.replace(".", "").replace(",", ".")
             prezzo = float(prezzo_string) / 1000
 
             # Estrae la fascia oraria
@@ -187,7 +187,6 @@ def extract_xml(archive: ZipFile, pun_data: PunData) -> PunData:
 
             # Calcola le statistiche
             pun_data.pun[Fascia.MONO].append(prezzo)
-
             pun_data.pun[fascia].append(prezzo)
 
     return pun_data

@@ -1,3 +1,5 @@
+"""Costanti utilizzate da pun_sensor."""
+
 # Dominio HomeAssistant
 DOMAIN = "pun_sensor"
 

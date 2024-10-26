@@ -1,8 +1,14 @@
+"""Interfacce di gestione di pun_sensor."""
+
 from enum import Enum
 
 
 class PunData:
+    """Classe che contiene i valori del PUN orario per ciascuna fascia."""
+
     def __init__(self) -> None:
+        """Inizializza le liste di ciascuna fascia."""
+
         self.pun: dict[Fascia, list[float]] = {
             Fascia.MONO: [],
             Fascia.F1: [],
@@ -13,6 +19,8 @@ class PunData:
 
 
 class Fascia(Enum):
+    """Enumerazione con i tipi di fascia oraria."""
+
     MONO = "MONO"
     F1 = "F1"
     F2 = "F2"
@@ -21,6 +29,8 @@ class Fascia(Enum):
 
 
 class PunValues:
+    """Classe che contiene il PUN attuale di ciascuna fascia."""
+
     value: dict[Fascia, float]
     value = {
         Fascia.MONO: 0.0,

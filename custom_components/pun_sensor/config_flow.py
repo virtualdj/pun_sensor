@@ -1,4 +1,4 @@
-"""config flows for pun_sensor"""
+"""UI di configurazione per pun_sensor."""
 
 import voluptuous as vol
 
@@ -11,14 +11,14 @@ from .const import CONF_ACTUAL_DATA_ONLY, CONF_SCAN_HOUR, DOMAIN
 
 
 class PUNOptionsFlow(config_entries.OptionsFlow):
-    """Opzioni per prezzi PUN (= riconfigurazione successiva)"""
+    """Opzioni per prezzi PUN (= riconfigurazione successiva)."""
 
     def __init__(self, entry: config_entries.ConfigEntry) -> None:
-        """Inizializzazione options flow"""
+        """Inizializzazione opzioni."""
         self.config_entry = entry
 
     async def async_step_init(self, user_input=None) -> FlowResult:
-        """Gestisce le opzioni"""
+        """Gestisce le opzioni."""
         errors = {}
         if user_input is not None:
             # Configurazione valida (validazione integrata nello schema)
@@ -47,7 +47,7 @@ class PUNOptionsFlow(config_entries.OptionsFlow):
 
 
 class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Configurazione per prezzi PUN (= prima configurazione)"""
+    """Configurazione per prezzi PUN (= prima configurazione)."""
 
     # Versione della configurazione (per utilizzi futuri)
     VERSION = 1
@@ -57,11 +57,11 @@ class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
     ) -> PUNOptionsFlow:
-        """Ottiene le opzioni per questa configurazione"""
+        """Ottiene le opzioni per questa configurazione."""
         return PUNOptionsFlow(config_entry)
 
     async def async_step_user(self, user_input=None):
-        """Gestione prima configurazione da Home Assistant"""
+        """Gestione prima configurazione da Home Assistant."""
         # Controlla che l'integrazione non venga eseguita più volte
         await self.async_set_unique_id(DOMAIN)
         self._abort_if_unique_id_configured()
@@ -73,10 +73,10 @@ class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Schema dati di configurazione (con default fissi)
         data_schema = {
-            vol.Required(CONF_SCAN_HOUR, default=1): vol.All(  # type: ignore
+            vol.Required(CONF_SCAN_HOUR, default=1): vol.All(
                 cv.positive_int, vol.Range(min=0, max=23)
             ),
-            vol.Optional(CONF_ACTUAL_DATA_ONLY, default=False): cv.boolean,  # type: ignore
+            vol.Optional(CONF_ACTUAL_DATA_ONLY, default=False): cv.boolean,
         }
 
         # Mostra la schermata di configurazione, con gli eventuali errori

@@ -1,14 +1,13 @@
-"""Coordinator per pun_sensor"""
+"""Coordinator per pun_sensor."""
 
-# pylint: disable=W0613
 from datetime import date, datetime, timedelta
 import io
 import logging
 from statistics import mean
 import zipfile
-from zoneinfo import ZoneInfo
 
 from aiohttp import ClientSession, ServerConnectionError
+from zoneinfo import ZoneInfo
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -16,7 +15,6 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_point_in_time
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 import homeassistant.util.dt as dt_util
-
 
 from .const import (
     CONF_ACTUAL_DATA_ONLY,
@@ -27,21 +25,23 @@ from .const import (
     EVENT_UPDATE_PUN,
     WEB_RETRIES_MINUTES,
 )
-from .utils import get_fascia, get_next_date, extract_xml
-from .interfaces import PunData, Fascia, PunValues
+from .interfaces import Fascia, PunData, PunValues
+from .utils import extract_xml, get_fascia, get_next_date
 
+# Ottiene il logger
 _LOGGER = logging.getLogger(__name__)
 
+# Usa sempre il fuso orario italiano (i dati del sito sono per il mercato italiano)
 tz_pun = ZoneInfo("Europe/Rome")
 
 
 class PUNDataUpdateCoordinator(DataUpdateCoordinator):
-    """Data coordinator"""
+    """Classe coordinator di aggiornamento dati."""
 
     session: ClientSession
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry) -> None:
-        """Gestione dell'aggiornamento da Home Assistant"""
+        """Gestione dell'aggiornamento da Home Assistant."""
         super().__init__(
             hass,
             _LOGGER,
@@ -152,15 +152,16 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         for fascia, value_list in self.pun_data.pun.items():
             # Se abbiamo valori nella fascia
             if len(value_list) > 0:
-                # Calcola la media dei pun e aggiorna il valore del pun attuale per la fascia corrispondente
+                # Calcola la media dei pun e aggiorna il valore del pun attuale
+                # per la fascia corrispondente
                 self.pun_values.value[fascia] = mean(self.pun_data.pun[fascia])
             else:
                 # Skippiamo i dict se vuoti
                 pass
+
         # Calcola la fascia F23 (a partire da F2 ed F3)
         # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:
         # https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806
-        # essendo derivato e non avendo sicurezza dell'ordine del dict, controlliamo dopo
         if (
             len(self.pun_data.pun[Fascia.F2]) and len(self.pun_data.pun[Fascia.F3])
         ) > 0:
@@ -179,7 +180,6 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug(
             "Valori PUN: %s", ", ".join(str(f) for f in self.pun_values.value.values())
         )
-        return
 
     async def update_fascia(self, now=None):
         """Aggiorna la fascia oraria corrente."""
@@ -203,7 +203,6 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.fascia_successiva, self.termine_prossima_fascia = get_fascia(
             self.prossimo_cambio_fascia
         )
-
         _LOGGER.info(
             "Nuova fascia corrente: F%s (prossima: F%s alle %s)",
             self.fascia_corrente,
@@ -220,7 +219,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
     async def update_pun(self, now=None):
-        """Aggiorna i prezzi PUN da Internet (funziona solo se schedulata)"""
+        """Aggiorna i prezzi PUN da Internet (funziona solo se schedulata)."""
         # Aggiorna i dati da web
         try:
             # Esegue l'aggiornamento
@@ -231,8 +230,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.web_retries = WEB_RETRIES_MINUTES
 
         # Errore nel fetch dei dati se la response non e' 200
-        # pylint: disable=W0718
-        # Broad Except catching
+        # pylint: disable=broad-exception-caught
         except (Exception, UpdateFailed, ServerConnectionError) as e:
             # Errori durante l'esecuzione dell'aggiornamento, riprova dopo
             # Annulla eventuali schedulazioni attive
@@ -267,6 +265,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                     "Prossimo aggiornamento web: %s",
                     next_update_pun.strftime("%d/%m/%Y %H:%M:%S %z"),
                 )
+
             # Esce e attende la prossima schedulazione
             return
 
