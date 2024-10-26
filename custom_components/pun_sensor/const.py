@@ -8,6 +8,9 @@ PUN_FASCIA_F2 = 2
 PUN_FASCIA_F3 = 3
 PUN_FASCIA_F23 = 4
 
+# Intervalli di tempo per i tentativi
+WEB_RETRIES_MINUTES = [1, 10, 60, 120, 180]
+
 # Tipi di aggiornamento
 COORD_EVENT = "coordinator_event"
 EVENT_UPDATE_FASCIA = "event_update_fascia"

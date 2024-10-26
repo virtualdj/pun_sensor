@@ -25,6 +25,7 @@ from .const import (
     DOMAIN,
     EVENT_UPDATE_FASCIA,
     EVENT_UPDATE_PUN,
+    WEB_RETRIES_MINUTES,
 )
 from .utils import get_fascia, get_next_date, extract_xml
 from .interfaces import PunData, Fascia, PunValues
@@ -59,7 +60,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.scan_hour = config.options.get(CONF_SCAN_HOUR, config.data[CONF_SCAN_HOUR])
 
         # Inizializza i valori di default
-        self.web_retries = 0
+        self.web_retries = WEB_RETRIES_MINUTES
         self.schedule_token = None
         self.pun_data: PunData = PunData()
         self.pun_values: PunValues = PunValues()
@@ -226,29 +227,21 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             await self._async_update_data()
 
             # Se non ci sono eccezioni, ha avuto successo
-            self.web_retries = 0
+            # Ricarica i tentativi per la prossima esecuzione
+            self.web_retries = WEB_RETRIES_MINUTES
+
         # Errore nel fetch dei dati se la response non e' 200
         # pylint: disable=W0718
         # Broad Except catching
         except (Exception, UpdateFailed, ServerConnectionError) as e:
             # Errori durante l'esecuzione dell'aggiornamento, riprova dopo
-            if self.web_retries < 4:
-                # 10 minuti dopo il primo tentativo, poi multipli di 60, max 180 min in 4 tentativi
-                retry_in_minutes = 10 if self.web_retries < 1 else 60 * self.web_retries
-                self.web_retries += 1
-            else:
-                # Sesto errore, tentativi esauriti
-                self.web_retries = 0
-
-                # Schedula al giorno dopo
-                retry_in_minutes = 0
-
             # Annulla eventuali schedulazioni attive
             self.clean_tokens()
 
             # Prepara la schedulazione
-            if retry_in_minutes > 0:
+            if self.web_retries:
                 # Minuti dopo
+                retry_in_minutes = self.web_retries.pop(0)
                 _LOGGER.warning(
                     "Errore durante l'aggiornamento dei dati, nuovo tentativo tra %s minut%s.",
                     retry_in_minutes,
@@ -259,7 +252,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                     self.hass, timedelta(minutes=retry_in_minutes), self.update_pun
                 )
             else:
-                # Giorno dopo
+                # Tentativi esauriti, passa al giorno dopo
                 _LOGGER.error(
                     "Errore durante l'aggiornamento via web, tentativi esauriti.",
                     exc_info=e,
