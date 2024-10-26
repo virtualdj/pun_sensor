@@ -1,0 +1,24 @@
+# Example configuration.yaml entry
+default_config:
+
+logger:
+  default: info
+  logs:
+    custom_components.pun_sensor: debug
+
+# Disable ffmpeg
+ffmpeg:
+  ffmpeg_bin: /usr/bin/true
+
+# Run with debugpy and wait for debugger to connect
+# debugpy:
+#   start: true
+#   wait: true
+
+# Enable this part if you want to use CodeSpaces
+# http:
+#   use_x_forwarded_for: true
+#   trusted_proxies:
+#     - 127.0.0.1
+#   ip_ban_enabled: true
+#   login_attempts_threshold: 3
