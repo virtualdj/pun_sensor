@@ -15,7 +15,7 @@ categories:
       - 'bug'
 
   - title: '🧰 Manutenzione'
-    label:
+    labels:
       - 'dependencies'
       - 'documentation'
       - 'maintenance'
