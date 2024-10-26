@@ -2,21 +2,21 @@
 
 # pylint: disable= E1101
 
+from datetime import timedelta
 import logging
 import random
-from datetime import timedelta
 
-from zoneinfo import ZoneInfo
-import holidays
-
-import homeassistant.util.dt as dt_util
 from awesomeversion.awesomeversion import AwesomeVersion
+import holidays
+from zoneinfo import ZoneInfo
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_call_later, async_track_point_in_time
+import homeassistant.util.dt as dt_util
 
-from .const import CONF_ACTUAL_DATA_ONLY, CONF_SCAN_HOUR, DOMAIN
+from .const import CONF_ACTUAL_DATA_ONLY, CONF_SCAN_HOUR, DOMAIN, WEB_RETRIES_MINUTES
 from .coordinator import PUNDataUpdateCoordinator
 
 if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2024.5.0"):
@@ -100,7 +100,7 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
             coordinator.schedule_token = None
 
         # Schedula la prossima esecuzione
-        coordinator.web_retries = 0
+        coordinator.web_retries = WEB_RETRIES_MINUTES
         coordinator.schedule_token = async_track_point_in_time(
             coordinator.hass, coordinator.update_pun, next_update_pun
         )
@@ -122,7 +122,7 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
             coordinator.schedule_token = None
 
         # Esegue un nuovo aggiornamento immediatamente
-        coordinator.web_retries = 0
+        coordinator.web_retries = WEB_RETRIES_MINUTES
         coordinator.schedule_token = async_call_later(
             coordinator.hass, timedelta(seconds=5), coordinator.update_pun
         )
