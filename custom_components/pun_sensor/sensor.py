@@ -1,6 +1,6 @@
 """Implementazione sensori di pun_sensor."""
 
-# pylint: disable=global-variable-undefined,overridden-final-method
+# pylint: disable=global-variable-undefined, global-statement, overridden-final-method
 from typing import Any
 
 from awesomeversion.awesomeversion import AwesomeVersion
@@ -28,6 +28,7 @@ from .const import DOMAIN
 from .interfaces import Fascia, PunValues
 
 ATTR_ROUNDED_DECIMALS = "rounded_decimals"
+has_suggested_display_precision = False
 
 
 async def async_setup_entry(
@@ -173,7 +174,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         """Unita' di misura."""
         return f"{CURRENCY_EURO}/{UnitOfEnergy.KILO_WATT_HOUR}"
 
-    @property
+    @property  # type: ignore[misc]
     def state(self) -> str | float:
         """Stato del sensore."""
         return fmt_float(self.native_value)
@@ -339,7 +340,7 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
         """Determina se il valore è disponibile."""
         return self._available
 
-    @property
+    @property  # type: ignore[override]
     def native_value(self) -> float:
         """Restituisce il prezzo della fascia corrente."""
         return self._native_value
@@ -349,7 +350,7 @@ class PrezzoFasciaPUNSensorEntity(FasciaPUNSensorEntity, RestoreEntity):
         """Unita' di misura."""
         return f"{CURRENCY_EURO}/{UnitOfEnergy.KILO_WATT_HOUR}"
 
-    @property
+    @property  # type: ignore[misc]
     def state(self) -> str | float:
         """Stato del sensore."""
         return fmt_float(self.native_value)
