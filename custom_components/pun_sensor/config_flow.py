@@ -19,7 +19,7 @@ class PUNOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None) -> FlowResult:
         """Gestisce le opzioni."""
-        errors = {}
+        errors: dict[str, str] | None = {}
         if user_input is not None:
             # Configurazione valida (validazione integrata nello schema)
             return self.async_create_entry(title="PUN", data=user_input)

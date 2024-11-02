@@ -32,7 +32,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     # Carica le dipendenze di holidays in background per evitare errori nel log
     if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2024.5.0"):
         with async_pause_setup(hass, SetupPhases.WAIT_IMPORT_PACKAGES):
-            await hass.async_add_import_executor_job(holidays.IT)
+            await hass.async_add_import_executor_job(holidays.IT)  # type: ignore[attr-defined]
 
     # Salva il coordinator nella configurazione
     coordinator = PUNDataUpdateCoordinator(hass, config)

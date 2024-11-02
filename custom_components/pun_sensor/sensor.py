@@ -1,5 +1,6 @@
 """Implementazione sensori di pun_sensor."""
 
+# pylint: disable=global-variable-undefined,overridden-final-method
 from typing import Any
 
 from awesomeversion.awesomeversion import AwesomeVersion
@@ -47,7 +48,7 @@ async def async_setup_entry(
     )
 
     # Crea i sensori dei valori del pun (legati al coordinator)
-    entities = []
+    entities: list[SensorEntity] = []
     entities.extend(
         PUNSensorEntity(coordinator, fascia) for fascia in PunValues().value
     )

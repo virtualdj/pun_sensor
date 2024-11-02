@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 import logging
 from zipfile import ZipFile
 
-import defusedxml.ElementTree as et
+import defusedxml.ElementTree as et  # type: ignore[import-untyped]
 import holidays
 
 from .interfaces import Fascia, PunData
@@ -41,7 +41,7 @@ def get_fascia(dataora: datetime) -> tuple[Fascia, datetime]:
     """Restituisce la fascia della data/ora indicata e la data del prossimo cambiamento."""
 
     # Verifica se la data corrente è un giorno con festività
-    festivo = dataora in holidays.IT()
+    festivo = dataora in holidays.IT()  # type: ignore[attr-defined]
 
     # Identifica la fascia corrente
     # F1 = lu-ve 8-19
@@ -135,7 +135,7 @@ def get_next_date(
     )
 
     if feriale:
-        while (prossima in holidays.IT()) or (prossima.weekday() == 6):
+        while (prossima in holidays.IT()) or (prossima.weekday() == 6):  # type: ignore[attr-defined]
             prossima += timedelta(days=1)
 
     return prossima
@@ -149,7 +149,7 @@ def extract_xml(archive: ZipFile, pun_data: PunData) -> PunData:
 
     """
     # Carica le festività
-    it_holidays = holidays.IT()
+    it_holidays = holidays.IT()  # type: ignore[attr-defined]
 
     # Esamina ogni file XML nello ZIP (ordinandoli prima)
     for fn in sorted(archive.namelist()):
