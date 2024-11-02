@@ -6,14 +6,12 @@
     "PYTHONASYNCIODEBUG": "1"
   },
   "runArgs": ["-e", "GIT_EDITOR=code --wait"],
-  "forwardPorts": [
-        8123
-    ],
+  "forwardPorts": [8123],
   "portsAttributes": {
-      "8123": {
-          "label": "Home Assistant",
-          "onAutoForward": "notify"
-      }
+    "8123": {
+      "label": "Home Assistant",
+      "onAutoForward": "notify"
+    }
   },
   "customizations": {
     "vscode": {
@@ -25,8 +23,9 @@
         "ms-python.vscode-pylance",
         "redhat.vscode-yaml",
         "esbenp.prettier-vscode",
-        "ryanluker.vscode-coverage-gutters",
-        "thibault-vanderseypen.i18n-json-editor"
+        "thibault-vanderseypen.i18n-json-editor",
+        "eamodio.gitlens",
+        "ms-python.mypy-type-checker"
       ],
       "settings": {
         "files.eol": "\n",
@@ -47,16 +46,13 @@
           "files.trimTrailingWhitespace": false
         },
         "i18nJsonEditor.forceKeyUPPERCASE": false,
-        "i18nJsonEditor.supportedFolders": [
-          "translations",
-          "i18n"
-        ]
+        "i18nJsonEditor.supportedFolders": ["translations", "i18n"]
       }
     }
   },
   "remoteUser": "vscode",
   "features": {
-      "ghcr.io/devcontainers/features/rust:1": {}
-      //"ghcr.io/devcontainers-contrib/features/ffmpeg-apt-get:1": {}
+    "ghcr.io/devcontainers/features/rust:1": {}
+    //"ghcr.io/devcontainers-contrib/features/ffmpeg-apt-get:1": {}
   }
 }
