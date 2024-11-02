@@ -120,9 +120,10 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
                 # Non ci sono dati, sensore non disponibile
                 self._available = False
 
-        elif len(self.coordinator.pun_data.pun[Fascia.F2]) > 0 and len(
-            self.coordinator.pun_data.pun[Fascia.F3] > 0
-        ):
+        elif (
+            len(self.coordinator.pun_data.pun[Fascia.F2])
+            and len(self.coordinator.pun_data.pun[Fascia.F3])
+        ) > 0:
             # Caso speciale per fascia F23: affinché sia disponibile devono
             # esserci dati sia sulla fascia F2 che sulla F3,
             # visto che è calcolata a partire da questi
