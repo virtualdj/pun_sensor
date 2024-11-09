@@ -107,7 +107,6 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 
         # Inizializza le proprietà comuni
         self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_device_class = SensorDeviceClass.MONETARY
         self._attr_suggested_display_precision = 6
         self._available = False
         self._native_value = 0
@@ -287,7 +286,6 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
 
         # Inizializza le proprietà comuni
         self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_device_class = SensorDeviceClass.MONETARY
         self._attr_suggested_display_precision = 6
         self._available = False
         self._native_value = 0
