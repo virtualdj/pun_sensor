@@ -115,15 +115,16 @@ def get_fascia(dataora: datetime) -> tuple[Fascia, datetime]:
 
 
 def get_next_date(
-    dataora: datetime, ora: int, offset: int = 0, feriale: bool = False
+    dataora: datetime, ora: int, offset: int = 0, feriale: bool = False, minuto: int = 0
 ) -> datetime:
     """Ritorna una datetime in base ai parametri.
 
     Args:
     dataora (datetime): passa la data di riferimento.
     ora (int): l'ora a cui impostare la data.
-    offset (int = 0) : controlla il timedelta in days rispetto a dataora.
+    offset (int = 0): scostamento in giorni rispetto a dataora.
     feriale (bool = False): se True ritorna sempre una giornata lavorativa (no festivi, domeniche)
+    minuto (int = 0): minuto a cui impostare la data.
 
     Returns:
         prossima (datetime): L'istanza di datetime corrispondente.
@@ -131,7 +132,7 @@ def get_next_date(
     """
 
     prossima = (dataora + timedelta(days=offset)).replace(
-        hour=ora, minute=0, second=0, microsecond=0
+        hour=ora, minute=minuto, second=0, microsecond=0
     )
 
     if feriale:

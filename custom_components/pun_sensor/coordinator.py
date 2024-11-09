@@ -3,6 +3,7 @@
 from datetime import date, datetime, timedelta
 import io
 import logging
+import random
 from statistics import mean
 import zipfile
 
@@ -10,7 +11,7 @@ from aiohttp import ClientSession, ServerConnectionError
 from zoneinfo import ZoneInfo
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_point_in_time
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -19,6 +20,7 @@ import homeassistant.util.dt as dt_util
 from .const import (
     CONF_ACTUAL_DATA_ONLY,
     CONF_SCAN_HOUR,
+    CONF_SCAN_MINUTE,
     COORD_EVENT,
     DOMAIN,
     EVENT_UPDATE_FASCIA,
@@ -59,6 +61,10 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
         self.scan_hour = config.options.get(CONF_SCAN_HOUR, config.data[CONF_SCAN_HOUR])
 
+        # Carica il minuto di esecuzione dalla configurazione (o lo crea se non esiste)
+        self.scan_minute = 0
+        self.update_scan_minutes_from_config(hass=hass, config=config, new_minute=False)
+
         # Inizializza i valori di default
         self.web_retries = WEB_RETRIES_MINUTES
         self.schedule_token = None
@@ -79,6 +85,36 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         if self.schedule_token is not None:
             self.schedule_token()
             self.schedule_token = None
+
+    def update_scan_minutes_from_config(
+        self, hass: HomeAssistant, config: ConfigEntry, new_minute: bool = False
+    ):
+        """Imposta il minuto di aggiornamento nell'ora configurata.
+
+        Determina casualmente in quale minuto eseguire l'aggiornamento web
+        per evitare che le integrazioni di tutti gli utenti richiamino le API nello
+        stesso momento, a parità di ora.
+        """
+
+        # Controlla se estrarre a caso i minuti
+        if new_minute or (CONF_SCAN_MINUTE not in config.data):
+            # Genera un minuto casuale e lo inserisce nella configurazione
+            self.scan_minute = random.randint(0, 59)
+            new_data = {
+                **config.data,
+                CONF_SCAN_MINUTE: self.scan_minute,
+            }
+
+            @callback
+            def async_update_entry() -> None:
+                """Aggiorna la configurazione con i nuovi dati."""
+                self.hass.config_entries.async_update_entry(config, data=new_data)
+
+            # Accoda l'esecuzione del salvataggio dell'impostazione
+            hass.add_job(async_update_entry)
+        else:
+            # Carica i minuti dalla configurazione
+            self.scan_minute = config.data.get(CONF_SCAN_MINUTE, 0)
 
     async def _async_update_data(self):
         """Aggiornamento dati a intervalli prestabiliti."""
@@ -256,7 +292,10 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                     exc_info=e,
                 )
                 next_update_pun = get_next_date(
-                    dt_util.now(time_zone=tz_pun), self.scan_hour, 1
+                    dataora=dt_util.now(time_zone=tz_pun),
+                    ora=self.scan_hour,
+                    minuto=self.scan_minute,
+                    offset=1,
                 )
                 self.schedule_token = async_track_point_in_time(
                     self.hass, self.update_pun, next_update_pun
@@ -273,9 +312,13 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
 
         # Calcola la data della prossima esecuzione
-        next_update_pun = get_next_date(dt_util.now(), self.scan_hour)
+        next_update_pun = get_next_date(
+            dataora=dt_util.now(time_zone=tz_pun),
+            ora=self.scan_hour,
+            minuto=self.scan_minute,
+        )
         if next_update_pun <= dt_util.now():
-            # Se l'evento è già trascorso la esegue domani alla stessa ora
+            # Se l'evento è già trascorso, passa a domani alla stessa ora
             next_update_pun = next_update_pun + timedelta(days=1)
 
         # Annulla eventuali schedulazioni attive

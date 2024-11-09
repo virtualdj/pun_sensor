@@ -2,7 +2,6 @@
 
 from datetime import timedelta
 import logging
-import random
 
 from awesomeversion.awesomeversion import AwesomeVersion
 from holidays import country_holidays
@@ -73,20 +72,24 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
 
     # Aggiorna le impostazioni del coordinator dalle opzioni
     if config.options[CONF_SCAN_HOUR] != coordinator.scan_hour:
-        # Modificata l'ora di scansione
+        # Modificata l'ora di scansione nelle opzioni
         coordinator.scan_hour = config.options[CONF_SCAN_HOUR]
+
+        # Rigenera il minuto di esecuzione
+        coordinator.update_scan_minutes_from_config(
+            hass=hass, config=config, new_minute=True
+        )
 
         # Calcola la data della prossima esecuzione (all'ora definita)
         now = dt_util.now()
-
-        # Aggiunge un numero random di minuti alla call per evitare di sovraccaricare i server API
-        randminute = random.randrange(0, 59)
         next_update_pun = now.replace(
-            hour=coordinator.scan_hour, minute=randminute, second=0, microsecond=0
+            hour=coordinator.scan_hour,
+            minute=coordinator.scan_minute,
+            second=0,
+            microsecond=0,
         )
-        if next_update_pun.hour < now.hour:
-            # Se l'ora impostata è minore della corrente, schedula a domani
-            # (perciò se è uguale esegue subito l'aggiornamento)
+        if next_update_pun <= now:
+            # Se l'evento è già trascorso, passa a domani alla stessa ora
             next_update_pun = next_update_pun + timedelta(days=1)
 
         # Annulla eventuali schedulazioni attive
