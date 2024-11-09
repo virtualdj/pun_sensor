@@ -5,6 +5,7 @@ logger:
   default: info
   logs:
     homeassistant.setup: warning
+    homeassistant.components.go2rtc: fatal
     custom_components.pun_sensor: debug
 
 # Disable ffmpeg
