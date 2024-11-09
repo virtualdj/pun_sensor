@@ -5,7 +5,6 @@
 [![Validate](https://github.com/virtualdj/pun_sensor/actions/workflows/validate.yaml/badge.svg?branch=master)](https://github.com/virtualdj/pun_sensor/actions/workflows/validate.yaml)
 [![release](https://img.shields.io/github/v/release/virtualdj/pun_sensor?style=flat-square)](https://github.com/virtualdj/pun_sensor/releases)
 
-
 Integrazione per **Home Assistant** (basata sullo script [pun-fasce](https://github.com/virtualdj/pun-fasce)) che mostra i prezzi stimati del mese corrente per fasce orarie (F1, F2 e F3 e mono-oraria) nonché la fascia oraria attuale.
 
 I valori vengono scaricati dal sito [MercatoElettrico.org](https://storico.mercatoelettrico.org/It/Default.aspx) per l'intero mese e viene calcolata la media per fasce giorno per giorno, in questo modo verso la fine del mese il valore mostrato si avvicina sempre di più al prezzo reale del PUN in bolletta (per i contratti a prezzo variabile).
@@ -73,24 +72,4 @@ Dopo che si verifica il problema, premerlo nuovamente: in questo modo verrà sca
 
 ## Note di sviluppo
 
-Questa è la mia prima esperienza con le integrazioni di Home Assistant e, in generale, con Python. Purtroppo, mio malgrado, ho scoperto che la **documentazione di Home Assistant** per quanto riguarda la creazione di nuove integrazioni è **scarsa e incompleta**.
-
-Nella prima versione (commit [d239dae](https://github.com/virtualdj/pun_sensor/commit/d239dae713ae2d06e0e80f8625eab84dc3bb4e02)) ho provato ad effettuare un polling ogni 10 secondi sia per verificare se è sopraggiunto l'orario di aggiornamento dei prezzi che per calcolare la fascia oraria corrente. Ma, specie per il calcolo della fascia, non era il metodo corretto perché non è detto che l'aggiornamento avvenisse al secondo 0 della nuova fascia.
-Così, cercando altri sorgenti in giro su GitHub, ho scoperto che esiste una funzione in Home Assistant chiamata `async_track_point_in_time` che consente di schedulare l'esecuzione di una routine in un determinato istante nel tempo, che viene rispettato perfettamente. La versione successiva è stata quindi riscritta utilizzando questo metodo (più efficiente).
-
-Ovviamente non ho alcuna certezza che tutto questo sia la maniera giusta di procedere, ma funziona! Per chi di interesse, questi sono i progetti da cui ho tratto del codice interessante da utilizzare per il mio:
-
-- [zaubererty/homeassistant-mvpv](https://github.com/zaubererty/homeassistant-mvpv/blob/d124543a36ab90b94b85a2211f41fee5943239ac/custom_components/mypv/coordinator.py)
-- [Gradecak/spaarnelanden-containers](https://github.com/Gradecak/spaarnelanden-containers/blob/39db00072bdd4f99d1cf543fba314d161147259c/custom_components/spaarnelanden/sensor.py)
-- [nintendo_wishlist](https://github.com/custom-components/sensor.nintendo_wishlist/tree/main/custom_components/nintendo_wishlist)
-- [saso5/homeassistant-mojelektro](https://github.com/saso5/homeassistant-mojelektro/tree/d747e74a842be5697494da6403a1055fcb4322bf/custom_components/mojelektro)
-- [YodaDaCoda/hass-solarman-modbus](https://github.com/YodaDaCoda/hass-solarman-modbus/blob/36ebd2d7eef7834867805ae01de433e8f8ab2ddb/custom_components/solarman/config_flow.py)
-- [bruxy70/Garbage-Collection](https://github.com/bruxy70/Garbage-Collection/blob/ae73818b3b0786ebcf72b16a6f27428e516686e6/custom_components/garbage_collection/sensor.py)
-- [dcmeglio/alarmdecoder-hass](https://github.com/dcmeglio/alarmdecoder-hass/blob/a898ae18cc5562b2a5fc3a73511302b6d242fd07/custom_components/alarmdecoder/__init__.py)
-- [BenPru/luxtronik](https://github.com/BenPru/luxtronik/blob/a6c5adfe91532237075fe17df63b59120a8b7098/custom_components/luxtronik/sensor.py#L856-L857) e [collse/Home-AssistantConfig](https://github.com/collse/Home-AssistantConfig/blob/e4a1bc6ee3c470619e4169ac903b88f5dad3b6a8/custom_components/elastic/sensor.py#L66) per due esempi di come assegnare un _entity-id_ predeterminato quando si usa anche l'_unique_id_ senza ricevere errori `AttributeError: can't set attribute 'entity_id'` (altra cosa non sufficientemente documentata di HomeAssistant)
-- [dlashua/bolted](https://github.com/dlashua/bolted/blob/50065eba8ffb4abe498587cd889aa9ff7873aeb3/custom_components/bolted/entity_manager.py), [pippyn/Home-Assistant-Sensor-Afvalbeheer](https://github.com/pippyn/Home-Assistant-Sensor-Afvalbeheer/blob/master/custom_components/afvalbeheer/sensor.py) e [questo articolo](https://aarongodfrey.dev/programming/restoring-an-entity-in-home-assistant/) per come salvare e ripristinare lo stato di una entità con `RestoreEntity`
-- Il componente di Home Assistant [energyzero](https://github.com/home-assistant/core/tree/dev/homeassistant/components/energyzero) per il blocco del `config_flow` già configurato e per esprimere correttamente le unità di misura
-- La [PR #99213](https://github.com/home-assistant/core/pull/99213/files) di Home Assistant per il suggerimento di usare `async_call_later` anziché sommare il timedelta all'ora corrente
-- La [PR #76793](https://github.com/home-assistant/core/pull/76793/files) di Home Assistant per un esempio di come usare il [cancellation token](https://developers.home-assistant.io/docs/integration_listen_events/#available-event-helpers) restituito da `async_track_point_in_time`
-- I commit [1](https://github.com/home-assistant/core/commit/c574d86ddbafd6c18995ad9efb297fda3ce4292c) e [2](https://github.com/home-assistant/core/commit/36e7689d139d0f517bbdd8f8f2c11e18936d27b3) per risolvere il warning nei log `[homeassistant.util.loop] Detected blocking call to import_module inside the event loop by custom integration` comparso con la versione 2024.5.0 di Home Assistant e dovuto alle librerie importate
-- La configurazione del _devcontainer_ con script ispirati dalla repository [astrandb/viva](https://github.com/astrandb/viva/tree/main/scripts) e da post sulla [community Home Assistant](https://community.home-assistant.io/t/developing-home-assistant-core-in-a-vscode-devcontainer/235650/36); utili anche [questo](https://www.hacf.fr/dev_tuto_1_environnement/) e [questo](https://svrooij.io/2023/01/18/home-assistant-component/)
+Ho lasciato un diario dell'esperienza di programmazione di questa integrazione in [questa pagina](DEVELOPMENT.md). Potrete trovare qualche lamentela ma soprattutto link alle pagine dei progetti che mi hanno aiutato a svilupparla così com'è ora.
