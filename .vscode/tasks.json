@@ -20,6 +20,12 @@
       "problemMatcher": []
     },
     {
+      "label": "Clear Home Assistant config",
+      "type": "shell",
+      "command": ".devcontainer/scripts/clear-config",
+      "problemMatcher": []
+    },
+    {
       "label": "Upgrade Home Assistant to latest (beta)",
       "type": "shell",
       "command": ".devcontainer/scripts/upgrade",
@@ -41,6 +47,12 @@
       "label": "Lint with ruff",
       "type": "shell",
       "command": ".devcontainer/scripts/lint",
+      "problemMatcher": []
+    },
+    {
+      "label": "Type-check with mypy",
+      "type": "shell",
+      "command": ".devcontainer/scripts/type-check",
       "problemMatcher": []
     }
   ]

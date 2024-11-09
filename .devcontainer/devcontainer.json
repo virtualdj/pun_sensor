@@ -38,6 +38,7 @@
           "editor.defaultFormatter": "charliermarsh.ruff",
           "editor.formatOnSave": true
         },
+        "python.linting.mypyArgs": ["--cache-dir=.mypy_cache"],
         "editor.formatOnPaste": false,
         "editor.formatOnSave": true,
         "editor.formatOnType": true,
