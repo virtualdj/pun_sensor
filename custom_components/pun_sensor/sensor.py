@@ -238,7 +238,7 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
     @property
     def options(self) -> list[str] | None:
         """Possibili stati del sensore."""
-        return ["F1", "F2", "F3"]
+        return [Fascia.F1.value, Fascia.F2.value, Fascia.F3.value]
 
     @property
     def native_value(self) -> str | None:
