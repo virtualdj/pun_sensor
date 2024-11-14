@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/../.."
+
+# Termina Home Assistant se in esecuzione
+if pgrep hass; then pkill hass; fi
+
+# Elimina i file nella cartella 'config' (escluso il file 'configuration.yaml')
+find config -mindepth 1 ! -name 'configuration.yaml' -exec rm -rf {} +
+echo "Configuration cleared."
