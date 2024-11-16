@@ -57,9 +57,11 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # Inizializza i valori di configurazione (dalle opzioni o dalla configurazione iniziale)
         self.actual_data_only = config.options.get(
-            CONF_ACTUAL_DATA_ONLY, config.data[CONF_ACTUAL_DATA_ONLY]
+            CONF_ACTUAL_DATA_ONLY, config.data.get(CONF_ACTUAL_DATA_ONLY, False)
         )
-        self.scan_hour = config.options.get(CONF_SCAN_HOUR, config.data[CONF_SCAN_HOUR])
+        self.scan_hour = config.options.get(
+            CONF_SCAN_HOUR, config.data.get(CONF_SCAN_HOUR, 1)
+        )
 
         # Carica il minuto di esecuzione dalla configurazione (o lo crea se non esiste)
         self.scan_minute = 0
