@@ -211,10 +211,18 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Logga i dati
         _LOGGER.debug(
             "Numero di dati: %s",
-            ", ".join(str(len(i)) for i in self.pun_data.pun.values()),
+            ", ".join(
+                str(f"{len(dati)} ({fascia.value})")
+                for fascia, dati in self.pun_data.pun.items()
+                if fascia != Fascia.F23
+            ),
         )
         _LOGGER.debug(
-            "Valori PUN: %s", ", ".join(str(f) for f in self.pun_values.value.values())
+            "Valori PUN: %s",
+            ", ".join(
+                f"{prezzo} ({fascia.value})"
+                for fascia, prezzo in self.pun_values.value.items()
+            ),
         )
 
     async def update_fascia(self, now=None):
