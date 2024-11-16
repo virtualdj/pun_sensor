@@ -71,7 +71,9 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
     coordinator = hass.data[DOMAIN][config.entry_id]
 
     # Aggiorna le impostazioni del coordinator dalle opzioni
-    if config.options[CONF_SCAN_HOUR] != coordinator.scan_hour:
+    if (CONF_SCAN_HOUR in config.options) and (
+        config.options[CONF_SCAN_HOUR] != coordinator.scan_hour
+    ):
         # Modificata l'ora di scansione nelle opzioni
         coordinator.scan_hour = config.options[CONF_SCAN_HOUR]
 
@@ -107,7 +109,9 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
             next_update_pun.strftime("%d/%m/%Y %H:%M:%S %z"),
         )
 
-    if config.options[CONF_ACTUAL_DATA_ONLY] != coordinator.actual_data_only:
+    if (CONF_ACTUAL_DATA_ONLY in config.options) and (
+        config.options[CONF_ACTUAL_DATA_ONLY] != coordinator.actual_data_only
+    ):
         # Modificata impostazione 'Usa dati reali'
         coordinator.actual_data_only = config.options[CONF_ACTUAL_DATA_ONLY]
         _LOGGER.debug(
