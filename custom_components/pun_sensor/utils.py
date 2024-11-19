@@ -152,6 +152,10 @@ def extract_xml(archive: ZipFile, pun_data: PunData) -> PunData:
     # Carica le festività
     it_holidays = holidays.IT()  # type: ignore[attr-defined]
 
+    # Azzera i dati precedenti
+    for fascia in pun_data.pun.values():
+        fascia.clear()
+
     # Esamina ogni file XML nello ZIP (ordinandoli prima)
     for fn in sorted(archive.namelist()):
         # Scompatta il file XML in memoria
