@@ -27,8 +27,8 @@ from .const import (
     EVENT_UPDATE_PUN,
     WEB_RETRIES_MINUTES,
 )
-from .interfaces import Fascia, PunData, PunValues
-from .utils import extract_xml, get_fascia, get_next_date
+from .interfaces import Fascia, PunData, PunValues, Zona
+from .utils import extract_xml, get_fascia, get_hour_datetime, get_next_date
 
 # Ottiene il logger
 _LOGGER = logging.getLogger(__name__)
@@ -76,6 +76,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.fascia_successiva: Fascia | None = None
         self.prossimo_cambio_fascia: datetime | None = None
         self.termine_prossima_fascia: datetime | None = None
+        self.orario_prezzo: datetime = get_hour_datetime(dt_util.now(time_zone=tz_pun))
 
         _LOGGER.debug(
             "Coordinator inizializzato (con 'usa dati reali' = %s).",
@@ -121,13 +122,16 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Aggiornamento dati a intervalli prestabiliti."""
 
+        self.pun_data.zona = Zona.NORD  # TODO: Impostare zona da configuratore
         # Calcola l'intervallo di date per il mese corrente
-        date_end = dt_util.now().date()
+        date_end = dt_util.now().date() + timedelta(
+            days=1
+        )  # Necessario per prezzo zonale (domani)
         date_start = date(date_end.year, date_end.month, 1)
 
         # All'inizio del mese, aggiunge i valori del mese precedente
         # a meno che CONF_ACTUAL_DATA_ONLY non sia impostato
-        if (not self.actual_data_only) and (date_end.day < 4):
+        if (not self.actual_data_only) and (date_end.day < 5):
             date_start = date_start - timedelta(days=3)
 
         start_date_param = date_start.strftime("%Y%m%d")
@@ -184,7 +188,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
         # Estrae i dati dall'archivio
-        self.pun_data = extract_xml(archive, self.pun_data)
+        self.pun_data = extract_xml(
+            archive, self.pun_data, dt_util.now(time_zone=tz_pun).date()
+        )
 
         # Per ogni fascia, calcola il valore del pun
         for fascia, value_list in self.pun_data.pun.items():
@@ -228,7 +234,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
     async def update_fascia(self, now=None):
-        """Aggiorna la fascia oraria corrente."""
+        """Aggiorna la fascia oraria corrente (al cambio fascia)."""
 
         # Scrive l'ora corrente (a scopi di debug)
         _LOGGER.debug(
@@ -341,4 +347,21 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         _LOGGER.debug(
             "Prossimo aggiornamento web: %s",
             next_update_pun.strftime("%d/%m/%Y %H:%M:%S %z"),
+        )
+
+    async def update_prezzo_zonale(self, now=None):
+        """Aggiorna il prezzo zonale corrente (ogni ora)."""
+
+        # Aggiorna il nuovo orario
+        self.orario_prezzo = get_hour_datetime(dt_util.now(time_zone=tz_pun))
+
+        # Notifica che i dati sono stati aggiornati (fascia)
+        self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PREZZO_ZONALE})
+
+        # Schedula la prossima esecuzione all'ora successiva
+        next_update_prezzo_zonale = (
+            dt_util.now(time_zone=tz_pun) + timedelta(hours=1)
+        ).replace(minute=0, second=0, microsecond=0)
+        async_track_point_in_time(
+            self.hass, self.update_prezzo_zonale, next_update_prezzo_zonale
         )

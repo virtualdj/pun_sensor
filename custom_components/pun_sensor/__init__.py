@@ -40,6 +40,9 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     # Aggiorna immediatamente la fascia oraria corrente
     await coordinator.update_fascia()
 
+    # Aggiorna immediatamente il prezzo zonale corrente
+    await coordinator.update_prezzo_zonale()
+
     # Crea i sensori con la configurazione specificata
     await hass.config_entries.async_forward_entry_setups(config, PLATFORMS)
 

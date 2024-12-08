@@ -17,6 +17,7 @@ WEB_RETRIES_MINUTES = [1, 10, 60, 120, 180]
 COORD_EVENT = "coordinator_event"
 EVENT_UPDATE_FASCIA = "event_update_fascia"
 EVENT_UPDATE_PUN = "event_update_pun"
+EVENT_UPDATE_PREZZO_ZONALE = "event_update_prezzo_zonale"
 
 # Parametri configurabili da configuration.yaml
 CONF_SCAN_HOUR = "scan_hour"
