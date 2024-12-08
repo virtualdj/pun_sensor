@@ -58,6 +58,23 @@ template:
 A partire dalla versione v0.5.0, è stato aggiunto il sensore relativo al calcolo della fascia F23, cioè quella contrapposta alla F1 nella bioraria. Il calcolo non è documentato molto nei vari siti (si veda [QUI](https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1806864251)) e non è affatto la media dei prezzi in F2 e F3 come si potrebbe pensare: c'è invece una percentuale fissa, [come ha scoperto _virtualj_](https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806).
 Pertanto, seppur questo metodo non sia ufficiale, è stato implementato perché i risultati corrispondono sempre alle tabelle pubblicate online.
 
+### Prezzo zonale
+
+Oltre al prezzo zonale corrente, negli **attributi** del sensore vengono memorizzati i prezzi scaricati per la giornata di **oggi** (prefisso: `oggi_h_`) e **domani** (prefisso: `domani_h_`), con l'ora a 2 cifre.
+Di seguito un esempio di come visualizzarli e/o utilizzarli in un template.
+
+```jinja
+Prezzo zonale
+{% for h in range(24) -%}
+  {%- set prezzo = state_attr("sensor.pun_prezzo_zonale", "oggi_h_" + "%02d" % h) -%}
+  {%- if prezzo is not none -%}
+  Oggi, ore {{ "%02d" % h }} = {{ "%.6f" % prezzo }} €/kWh
+  {%- else -%}
+  Oggi, ore {{ "%02d" % h }} = n.d.
+  {%- endif %}
+{% endfor %}
+```
+
 ### In caso di problemi
 
 È possibile abilitare la registrazione dei log tramite l'interfaccia grafica in **Impostazioni > Dispositivi e servizi > Prezzi PUN del mese** e cliccando sul pulsante **Abilita la registrazione di debug**.

@@ -142,8 +142,47 @@ def get_next_date(
     return prossima
 
 
-def extract_xml(archive: ZipFile, pun_data: PunData) -> PunData:
+def get_hour_datetime(dataora: datetime) -> datetime:
+    """Restituisce un datetime con solo la data e l'ora.
+
+    Args:
+    dataora (datetime): Data e ora di partenza.
+
+    Returns:
+        datetime: La nuova data con solo giorno e ora.
+
+    """
+    return datetime(
+        year=dataora.year,
+        month=dataora.month,
+        day=dataora.day,
+        hour=dataora.hour,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+
+
+def datetime_to_packed_string(dataora: datetime) -> str:
+    """Restituisce una stringa usabile come chiave dizionario a partire da un datime.
+
+    Args:
+    dataora (datetime): Data e ora di partenza.
+
+    Returns:
+        str: Stringa in formato YYYYMMDDHH.
+
+    """
+    return dataora.strftime("%Y%m%d%H")
+
+
+def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
     """Estrae i valori del pun per ogni fascia da un archivio zip contenente un XML.
+
+    Args:
+    archive (ZipFile): archivio ZIP con i file XML all'interno.
+    pun_data (PunData): riferimento alla struttura che verrà modificata con i dati da XML.
+    today (date): data di oggi, utilizzata per memorizzare il prezzo zonale.
 
     Returns:
     List[ list[MONO: float], list[F1: float], list[F2: float], list[F3: float] ]
@@ -153,8 +192,8 @@ def extract_xml(archive: ZipFile, pun_data: PunData) -> PunData:
     it_holidays = holidays.IT()  # type: ignore[attr-defined]
 
     # Azzera i dati precedenti
-    for fascia in pun_data.pun.values():
-        fascia.clear()
+    for fascia_da_svuotare in pun_data.pun.values():
+        fascia_da_svuotare.clear()
 
     # Esamina ogni file XML nello ZIP (ordinandoli prima)
     for fn in sorted(archive.namelist()):
@@ -182,16 +221,69 @@ def extract_xml(archive: ZipFile, pun_data: PunData) -> PunData:
             # Estrae l'ora dall'XML
             ora = int(prezzi.find("Ora").text) - 1  # 1..24
 
-            # Estrae il prezzo PUN dall'XML in un float
-            prezzo_string = prezzi.find("PUN").text
-            prezzo_string = prezzo_string.replace(".", "").replace(",", ".")
-            prezzo = float(prezzo_string) / 1000
+            # Verifica se la data odierna non è successiva ad oggi
+            if dat_date <= today:
+                # Estrae il prezzo PUN dall'XML in un float
+                if (prezzo_xml := prezzi.find("PUN")) is not None:
+                    prezzo_string = prezzo_xml.text.replace(".", "").replace(",", ".")
+                    prezzo = float(prezzo_string) / 1000
 
-            # Estrae la fascia oraria
-            fascia = get_fascia_for_xml(dat_date, festivo, ora)
+                    # Estrae la fascia oraria
+                    fascia = get_fascia_for_xml(dat_date, festivo, ora)
 
-            # Calcola le statistiche
-            pun_data.pun[Fascia.MONO].append(prezzo)
-            pun_data.pun[fascia].append(prezzo)
+                    # Calcola le statistiche
+                    pun_data.pun[Fascia.MONO].append(prezzo)
+                    pun_data.pun[fascia].append(prezzo)
+
+                    # Se odierno, lo salva nel PUN orario
+                    if dat_date == today:
+                        # Compone l'orario
+                        orario_prezzo = datetime_to_packed_string(
+                            datetime(
+                                year=dat_date.year,
+                                month=dat_date.month,
+                                day=dat_date.day,
+                                hour=ora,
+                                minute=0,
+                                second=0,
+                                microsecond=0,
+                            )
+                        )
+                else:
+                    # PUN non valido
+                    _LOGGER.warning(
+                        "PUN non specificato per %s ad orario: %s.", dat_string, ora
+                    )
+
+            # Per oggi e domani estrae i prezzi zonali
+            if dat_date >= today:
+                # Compone l'orario
+                orario_prezzo = datetime_to_packed_string(
+                    datetime(
+                        year=dat_date.year,
+                        month=dat_date.month,
+                        day=dat_date.day,
+                        hour=ora,
+                        minute=0,
+                        second=0,
+                        microsecond=0,
+                    )
+                )
+
+                # Controlla che la zona del prezzo zonale sia impostata
+                if pun_data.zona is not None:
+                    # Estrae il prezzo zonale dall'XML in un float
+                    # basandosi sul nome dell'enum
+                    if (
+                        prezzo_zonale_xml := prezzi.find(pun_data.zona.name)
+                    ) is not None:
+                        prezzo_zonale_string = prezzo_zonale_xml.text.replace(
+                            ".", ""
+                        ).replace(",", ".")
+                        pun_data.prezzi_zonali[orario_prezzo] = (
+                            float(prezzo_zonale_string) / 1000
+                        )
+                    else:
+                        pun_data.prezzi_zonali[orario_prezzo] = None
 
     return pun_data

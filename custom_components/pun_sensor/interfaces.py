@@ -7,7 +7,7 @@ class PunData:
     """Classe che contiene i valori del PUN orario per ciascuna fascia."""
 
     def __init__(self) -> None:
-        """Inizializza le liste di ciascuna fascia."""
+        """Inizializza le liste di ciascuna fascia e i prezzi zonali."""
 
         self.pun: dict[Fascia, list[float]] = {
             Fascia.MONO: [],
@@ -17,6 +17,8 @@ class PunData:
             Fascia.F23: [],
         }
 
+        self.zona: Zona | None = None
+        self.prezzi_zonali: dict[str, float | None] = {}
 
 class Fascia(Enum):
     """Enumerazione con i tipi di fascia oraria."""

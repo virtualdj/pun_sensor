@@ -23,10 +23,13 @@ from homeassistant.helpers.typing import DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import PUNDataUpdateCoordinator
-from .const import DOMAIN
+from .const import COORD_EVENT, DOMAIN, EVENT_UPDATE_PREZZO_ZONALE, EVENT_UPDATE_PUN
 from .interfaces import Fascia, PunValues
+from .utils import datetime_to_packed_string, get_next_date
 
 ATTR_ROUNDED_DECIMALS = "rounded_decimals"
+ATTR_PREFIX_PREZZO_OGGI = "oggi_h_"
+ATTR_PREFIX_PREZZO_DOMANI = "domani_h_"
 
 
 class CommonSettings:
@@ -60,6 +63,7 @@ async def async_setup_entry(
     # Crea sensori aggiuntivi
     entities.append(FasciaPUNSensorEntity(coordinator))
     entities.append(PrezzoFasciaPUNSensorEntity(coordinator))
+    entities.append(PrezzoZonaleSensorEntity(coordinator))
 
     # Aggiunge i sensori ma non aggiorna automaticamente via web
     # per lasciare il tempo ad Home Assistant di avviarsi
@@ -372,3 +376,200 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
         # Nelle versioni precedenti di Home Assistant
         # restituisce un valore arrotondato come attributo
         return {ATTR_ROUNDED_DECIMALS: str(format(round(self.native_value, 3), ".3f"))}
+
+
+class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
+    """Sensore del prezzo zonale aggiornato ogni ora."""
+
+    def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
+        """Inizializza il sensore."""
+        super().__init__(coordinator)
+
+        # Inizializza coordinator e tipo
+        self.coordinator = coordinator
+
+        # ID univoco sensore basato su un nome fisso
+        self.entity_id = ENTITY_ID_FORMAT.format("pun_prezzo_zonale")
+        self._attr_unique_id = self.entity_id
+        self._attr_has_entity_name = True
+
+        # Inizializza le proprietà comuni
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_suggested_display_precision = 6
+        self._available: bool = False
+        self._native_value: float = 0
+        self._friendly_name: str = "Prezzo zonale"
+        self._prezzi_zonali: dict[str, float | None] = {}
+
+    def _handle_coordinator_update(self) -> None:
+        """Gestisce l'aggiornamento dei dati dal coordinator."""
+
+        # Identifica l'evento che ha scatenato l'aggiornamento
+        if self.coordinator.data is None:
+            return
+        if (coordinator_event := self.coordinator.data.get(COORD_EVENT)) is None:
+            return
+
+        # Aggiornata la zona e/o i prezzi
+        if coordinator_event == EVENT_UPDATE_PUN:
+            if self.coordinator.pun_data.zona is not None:
+                # Imposta il nome della zona
+                self._friendly_name = (
+                    f"Prezzo zonale ({self.coordinator.pun_data.zona.value})"
+                )
+                # Verifica che il coordinator abbia i prezzi
+                if self.coordinator.pun_data.prezzi_zonali:
+                    # Copia i dati dal coordinator in locale (per il backup)
+                    self._prezzi_zonali = dict(self.coordinator.pun_data.prezzi_zonali)
+            else:
+                # Nessuna zona impostata
+                self._friendly_name = "Prezzo zonale"
+                self._prezzi_zonali = {}
+                self._available = False
+                self.async_write_ha_state()
+                return
+
+        # Cambiato l'orario del prezzo
+        if coordinator_event in (EVENT_UPDATE_PUN, EVENT_UPDATE_PREZZO_ZONALE):
+            if self.coordinator.pun_data.zona is not None:
+                # Controlla se il prezzo orario esiste per l'ora corrente
+                if (
+                    datetime_to_packed_string(self.coordinator.orario_prezzo)
+                    in self._prezzi_zonali
+                ):
+                    # Aggiorna il valore al prezzo orario
+                    if (
+                        valore := self._prezzi_zonali[
+                            datetime_to_packed_string(self.coordinator.orario_prezzo)
+                        ]
+                    ) is not None:
+                        self._native_value = valore
+                        self._available = True
+                    else:
+                        # Prezzo non disponibile
+                        self._available = False
+                else:
+                    # Orario non disponibile
+                    self._available = False
+            else:
+                # Nessuna zona impostata
+                self._available = False
+
+        # Aggiorna lo stato di Home Assistant
+        self.async_write_ha_state()
+
+    @property
+    def extra_restore_state_data(self) -> ExtraStoredData:
+        """Determina i dati da salvare per il ripristino successivo."""
+
+        # Salva i dati per la prossima istanza
+        return RestoredExtraData(
+            {
+                "friendly_name": self._friendly_name if self._available else None,
+                "prezzi_zonali": self._prezzi_zonali,
+            }
+        )
+
+    async def async_added_to_hass(self) -> None:
+        """Entità aggiunta ad Home Assistant."""
+        await super().async_added_to_hass()
+
+        # Recupera lo stato precedente, se esiste
+        if (old_data := await self.async_get_last_extra_data()) is not None:
+            # Recupera il dizionario con i valori precedenti
+            old_data_dict = old_data.as_dict()
+
+            # Nome
+            if (old_friendly_name := old_data_dict.get("friendly_name")) is not None:
+                self._friendly_name = old_friendly_name
+
+            # Valori delle fasce orarie
+            if (old_prezzi_zonali := old_data_dict.get("prezzi_zonali")) is not None:
+                self._prezzi_zonali = old_prezzi_zonali
+
+                # Controlla se il prezzo orario esiste per l'ora corrente
+                if (
+                    datetime_to_packed_string(self.coordinator.orario_prezzo)
+                    in self._prezzi_zonali
+                ):
+                    # Aggiorna il valore al prezzo orario
+                    if (
+                        valore := self._prezzi_zonali[
+                            datetime_to_packed_string(self.coordinator.orario_prezzo)
+                        ]
+                    ) is not None:
+                        self._native_value = valore
+                        self._available = True
+                    else:
+                        # Prezzo non disponibile
+                        self._available = False
+                else:
+                    # Imposta come non disponibile
+                    self._available = False
+
+    @property
+    def should_poll(self) -> bool:
+        """Determina l'aggiornamento automatico."""
+        return False
+
+    @property
+    def available(self) -> bool:
+        """Determina se il valore è disponibile."""
+        return self._available
+
+    @property
+    def native_value(self) -> float:
+        """Valore corrente del sensore."""
+        return fmt_float(self._native_value)
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Unita' di misura."""
+        return f"{CURRENCY_EURO}/{UnitOfEnergy.KILO_WATT_HOUR}"
+
+    @property
+    def icon(self) -> str:
+        """Icona da usare nel frontend."""
+        return "mdi:map-clock-outline"
+
+    @property
+    def name(self) -> str | None:
+        """Restituisce il nome del sensore."""
+        return self._friendly_name
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Restituisce gli attributi di stato."""
+
+        # Crea il dizionario degli attributi
+        attributes: dict[str, Any] = {}
+
+        # Aggiunge i prezzi orari negli attributi, ora per ora
+        if self.coordinator.pun_data.zona is not None:
+            for h in range(24):
+                # Prezzi di oggi
+                data_oggi = get_next_date(
+                    dataora=self.coordinator.orario_prezzo, ora=h, offset=0
+                )
+                attributes[ATTR_PREFIX_PREZZO_OGGI + f"{h:02d}"] = (
+                    self._prezzi_zonali.get(datetime_to_packed_string(data_oggi))
+                )
+
+            for h in range(24):
+                # Prezzi di domani
+                data_domani = get_next_date(
+                    dataora=self.coordinator.orario_prezzo, ora=h, offset=1
+                )
+                attributes[ATTR_PREFIX_PREZZO_DOMANI + f"{h:02d}"] = (
+                    self._prezzi_zonali.get(datetime_to_packed_string(data_domani))
+                )
+
+        # Nelle versioni precedenti di Home Assistant
+        # restituisce un valore arrotondato come attributo
+        if not CommonSettings.has_suggested_display_precision:
+            attributes[ATTR_ROUNDED_DECIMALS] = str(
+                format(round(self.native_value, 3), ".3f")
+            )
+
+        # Restituisce gli attributi
+        return attributes
