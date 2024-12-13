@@ -21,13 +21,15 @@ from .const import (
     CONF_ACTUAL_DATA_ONLY,
     CONF_SCAN_HOUR,
     CONF_SCAN_MINUTE,
+    CONF_ZONA,
     COORD_EVENT,
     DOMAIN,
     EVENT_UPDATE_FASCIA,
+    EVENT_UPDATE_PREZZO_ZONALE,
     EVENT_UPDATE_PUN,
     WEB_RETRIES_MINUTES,
 )
-from .interfaces import Fascia, PunData, PunValues, Zona
+from .interfaces import DEFAULT_ZONA, Fascia, PunData, PunValues, Zona
 from .utils import extract_xml, get_fascia, get_hour_datetime, get_next_date
 
 # Ottiene il logger
@@ -63,6 +65,60 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             CONF_SCAN_HOUR, config.data.get(CONF_SCAN_HOUR, 1)
         )
 
+        # Inizializza i dati PUN e la zona geografica
+        self.pun_data: PunData = PunData()
+        try:
+            # Estrae il valore dalla configurazione come stringa
+            zona_string = config.options.get(
+                CONF_ZONA, config.data.get(CONF_ZONA, DEFAULT_ZONA)
+            )
+
+            # Tenta di associare la stringa all'enum
+            # (per verificare che sia corretta)
+            self.pun_data.zona = Zona[zona_string]
+
+        except KeyError:
+            # La zona non è valida
+            _LOGGER.error(
+                "La zona specificata '%s' non esiste. Reimpostata zona di default '%s'.",
+                zona_string,
+                DEFAULT_ZONA.value,
+            )
+
+            # Aggiorna la configurazione salvata con la zona di default
+            # (per la prossima esecuzione)
+            self.pun_data.zona = DEFAULT_ZONA
+
+            @callback
+            async def async_restore_default_zona() -> None:
+                """Mostra una notifica di errore all'utente e reimposta la zona di default."""
+
+                # Mostra il messaggio all'utente che così può attivarsi
+                await hass.services.async_call(
+                    "persistent_notification",
+                    "create",
+                    {
+                        "title": "Errore integrazione PUN",
+                        "message": f"La zona geografica specificata '{zona_string}' non esiste più.\nÈ stata reimpostata la zona di default '{DEFAULT_ZONA.value}'.",
+                    },
+                )
+
+                # Reimposta sia la configurazione che le opzioni
+                new_data = {
+                    **config.data,
+                    CONF_ZONA: DEFAULT_ZONA.name,
+                }
+                new_options = {
+                    **config.options,
+                    CONF_ZONA: DEFAULT_ZONA.name,
+                }
+                hass.config_entries.async_update_entry(
+                    config, data=new_data, options=new_options
+                )
+
+            # Accoda l'esecuzione
+            hass.add_job(async_restore_default_zona)
+
         # Carica il minuto di esecuzione dalla configurazione (o lo crea se non esiste)
         self.scan_minute = 0
         self.update_scan_minutes_from_config(hass=hass, config=config, new_minute=False)
@@ -70,7 +126,6 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Inizializza i valori di default
         self.web_retries = WEB_RETRIES_MINUTES
         self.schedule_token = None
-        self.pun_data: PunData = PunData()
         self.pun_values: PunValues = PunValues()
         self.fascia_corrente: Fascia | None = None
         self.fascia_successiva: Fascia | None = None
@@ -122,7 +177,6 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         """Aggiornamento dati a intervalli prestabiliti."""
 
-        self.pun_data.zona = Zona.NORD  # TODO: Impostare zona da configuratore
         # Calcola l'intervallo di date per il mese corrente
         date_end = dt_util.now().date() + timedelta(
             days=1

@@ -1,5 +1,6 @@
 """Implementazione sensori di pun_sensor."""
 
+import logging
 from typing import Any
 
 from awesomeversion.awesomeversion import AwesomeVersion
@@ -30,6 +31,9 @@ from .utils import datetime_to_packed_string, get_next_date
 ATTR_ROUNDED_DECIMALS = "rounded_decimals"
 ATTR_PREFIX_PREZZO_OGGI = "oggi_h_"
 ATTR_PREFIX_PREZZO_DOMANI = "domani_h_"
+
+# Ottiene il logger
+_LOGGER = logging.getLogger(__name__)
 
 
 class CommonSettings:
@@ -466,6 +470,9 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         return RestoredExtraData(
             {
                 "friendly_name": self._friendly_name if self._available else None,
+                "zona": self.coordinator.pun_data.zona.name
+                if self.coordinator.pun_data.zona is not None
+                else None,
                 "prezzi_zonali": self._prezzi_zonali,
             }
         )
@@ -478,6 +485,28 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         if (old_data := await self.async_get_last_extra_data()) is not None:
             # Recupera il dizionario con i valori precedenti
             old_data_dict = old_data.as_dict()
+
+            # Zona geografica
+            if (old_zona_str := old_data_dict.get("zona")) is not None:
+                # Verifica che la zona attuale sia disponibile
+                # (se non lo è, c'è un errore nella configurazione)
+                if self.coordinator.pun_data.zona is None:
+                    _LOGGER.warning(
+                        "La zona geografica memorizzata '%s' non sembra essere più valida.",
+                        old_zona_str,
+                    )
+                    self._available = False
+                    return
+
+                # Controlla se la zona memorizzata è diversa dall'attuale
+                if old_zona_str != self.coordinator.pun_data.zona.name:
+                    _LOGGER.debug(
+                        "Ignorati i dati precedenti, perché riferiti alla zona '%s' (anziché '%s').",
+                        old_zona_str,
+                        self.coordinator.pun_data.zona.name,
+                    )
+                    self._available = False
+                    return
 
             # Nome
             if (old_friendly_name := old_data_dict.get("friendly_name")) is not None:

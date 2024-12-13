@@ -12,8 +12,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_call_later, async_track_point_in_time
 import homeassistant.util.dt as dt_util
 
-from .const import CONF_ACTUAL_DATA_ONLY, CONF_SCAN_HOUR, DOMAIN, WEB_RETRIES_MINUTES
+from .const import (
+    CONF_ACTUAL_DATA_ONLY,
+    CONF_SCAN_HOUR,
+    CONF_ZONA,
+    DOMAIN,
+    WEB_RETRIES_MINUTES,
+)
 from .coordinator import PUNDataUpdateCoordinator
+from .interfaces import DEFAULT_ZONA, Zona
 
 if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2024.5.0"):
     from homeassistant.setup import SetupPhases, async_pause_setup
@@ -131,3 +138,59 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
         coordinator.schedule_token = async_call_later(
             coordinator.hass, timedelta(seconds=5), coordinator.update_pun
         )
+
+    if (CONF_ZONA in config.options) and (
+        (coordinator.pun_data.zona is None)
+        or (config.options[CONF_ZONA] != coordinator.pun_data.zona.name)
+    ):
+        # Modificata la zona di riferimento, cerca l'enum
+        try:
+            new_zona = Zona[config.options[CONF_ZONA]]
+
+        except KeyError:
+            # La zona non esiste
+            _LOGGER.error(
+                "La zona specificata '%s' non esiste. Reimpostata la precedente.",
+                config.options[CONF_ZONA],
+            )
+            new_zona = coordinator.pun_data.zona
+
+        # Controlla se l'operazione ha avuto successo
+        if new_zona != coordinator.pun_data.zona:
+            # Modifica la zona geografica
+            coordinator.pun_data.zona = new_zona
+            _LOGGER.debug(
+                "Modificata la zona geografica in: %s.", coordinator.pun_data.zona.value
+            )
+
+            # Annulla eventuali schedulazioni attive
+            if coordinator.schedule_token is not None:
+                coordinator.schedule_token()
+                coordinator.schedule_token = None
+
+            # Esegue un nuovo aggiornamento immediatamente
+            coordinator.web_retries = WEB_RETRIES_MINUTES
+            coordinator.schedule_token = async_call_later(
+                coordinator.hass, timedelta(seconds=5), coordinator.update_pun
+            )
+
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    """Migra una vecchia configurazione alla nuova versione."""
+    _LOGGER.debug(
+        "Migrazione configurazione da versione %s.",
+        config_entry.version,
+    )
+    if config_entry.version == 1:
+        # Migrazione da versione 1 -> 2
+        # Implementata zona per prezzi zonali
+        new_data = {**config_entry.data}
+        new_data[CONF_ZONA] = DEFAULT_ZONA.name
+        hass.config_entries.async_update_entry(config_entry, data=new_data, version=2)
+
+    # Migrazione completata
+    _LOGGER.debug(
+        "Migrazione configurazione alla versione %s completata con successo.",
+        config_entry.version,
+    )
+    return True

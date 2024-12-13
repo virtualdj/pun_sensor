@@ -4,6 +4,7 @@
       "user": {
         "title": "PUN scraping settings",
         "data": {
+          "zona": "Geographical area for district prices",
           "scan_hour": "Web download start hour (0-23)",
           "actual_data_only": "Use only real data at month start"
         }
@@ -21,6 +22,7 @@
       "init": {
         "title": "Edit PUN scraping settings",
         "data": {
+          "zona": "Geographical area for district prices",
           "scan_hour": "Web download start hour (0-23)",
           "actual_data_only": "Use only real data at month start"
         }

@@ -41,3 +41,34 @@ class PunValues:
         Fascia.F3: 0.0,
         Fascia.F23: 0.0,
     }
+
+
+class Zona(Enum):
+    """Enumerazione con i nomi delle zone per i prezzi zonali."""
+
+    AUST = "Austria"
+    XAUS = "Austria Coupling"
+    CALA = "Calabria"
+    CNOR = "Centro Nord"
+    CSUD = "Centro Sud"
+    CORS = "Corsica"
+    COAC = "Corsica AC"
+    FRAN = "Francia"
+    XFRA = "Francia Coupling"
+    GREC = "Grecia"
+    XGRE = "Grecia Coupling"
+    NAT = "Italia"
+    COUP = "Italia Coupling"
+    MALT = "Malta"
+    MONT = "Montenegro"
+    NORD = "Nord"
+    SARD = "Sardegna"
+    SICI = "Sicilia"
+    SLOV = "Slovenia"
+    BSP = "Slovenia Coupling"
+    SUD = "Sud"
+    SVIZ = "Svizzera"
+
+
+# Zona predefinita
+DEFAULT_ZONA = Zona.NAT
