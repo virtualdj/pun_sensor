@@ -3,8 +3,6 @@
 import logging
 from typing import Any
 
-from awesomeversion.awesomeversion import AwesomeVersion
-
 from homeassistant.components.sensor import (
     ENTITY_ID_FORMAT,
     SensorDeviceClass,
@@ -12,7 +10,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CURRENCY_EURO, UnitOfEnergy, __version__ as HA_VERSION
+from homeassistant.const import CURRENCY_EURO, UnitOfEnergy
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import (
@@ -42,12 +40,6 @@ ATTR_PREFIX_PREZZO_DOMANI = "domani_h_"
 _LOGGER = logging.getLogger(__name__)
 
 
-class CommonSettings:
-    """Contiene variabili globali a tutte le classi."""
-
-    has_suggested_display_precision = False
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     config: ConfigEntry,
@@ -58,11 +50,6 @@ async def async_setup_entry(
 
     # Restituisce il coordinator
     coordinator = hass.data[DOMAIN][config.entry_id]
-
-    # Verifica la versione di Home Assistant
-    CommonSettings.has_suggested_display_precision = AwesomeVersion(
-        HA_VERSION
-    ) >= AwesomeVersion("2023.3.0")
 
     # Crea i sensori dei valori del pun (legati al coordinator)
     entities: list[SensorEntity] = []
@@ -79,17 +66,6 @@ async def async_setup_entry(
     # Aggiunge i sensori ma non aggiorna automaticamente via web
     # per lasciare il tempo ad Home Assistant di avviarsi
     async_add_entities(entities, update_before_add=False)
-
-
-def fmt_float(num: float) -> float:
-    """Formatta adeguatamente il numero decimale."""
-    if CommonSettings.has_suggested_display_precision:
-        return num
-
-    # In versioni precedenti di Home Assistant che non supportano
-    # l'attributo 'suggested_display_precision' restituisce il numero
-    # decimale già arrotondato
-    return round(num, 6)
 
 
 class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
@@ -195,7 +171,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     @property
     def native_value(self) -> float:
         """Valore corrente del sensore."""
-        return fmt_float(self._native_value)
+        return self._native_value
 
     @property
     def native_unit_of_measurement(self) -> str:
@@ -215,16 +191,6 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         if self.fascia:
             return f"PUN fascia {self.fascia.value}"
         return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Restituisce gli attributi di stato."""
-        if CommonSettings.has_suggested_display_precision:
-            return {}
-
-        # Nelle versioni precedenti di Home Assistant
-        # restituisce un valore arrotondato come attributo
-        return {ATTR_ROUNDED_DECIMALS: str(format(round(self.native_value, 3), ".3f"))}
 
 
 class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
@@ -394,7 +360,7 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
     @property
     def native_value(self) -> float:
         """Restituisce il prezzo della fascia corrente."""
-        return fmt_float(self._native_value)
+        return self._native_value
 
     @property
     def native_unit_of_measurement(self) -> str:
@@ -410,16 +376,6 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
     def name(self) -> str:
         """Restituisce il nome del sensore."""
         return self._friendly_name
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Restituisce gli attributi di stato."""
-        if CommonSettings.has_suggested_display_precision:
-            return {}
-
-        # Nelle versioni precedenti di Home Assistant
-        # restituisce un valore arrotondato come attributo
-        return {ATTR_ROUNDED_DECIMALS: str(format(round(self.native_value, 3), ".3f"))}
 
 
 class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
@@ -589,7 +545,7 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     @property
     def native_value(self) -> float:
         """Valore corrente del sensore."""
-        return fmt_float(self._native_value)
+        return self._native_value
 
     @property
     def native_unit_of_measurement(self) -> str:
@@ -632,13 +588,6 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
                 attributes[ATTR_PREFIX_PREZZO_DOMANI + f"{h:02d}"] = (
                     self._prezzi_zonali.get(datetime_to_packed_string(data_domani))
                 )
-
-        # Nelle versioni precedenti di Home Assistant
-        # restituisce un valore arrotondato come attributo
-        if not CommonSettings.has_suggested_display_precision:
-            attributes[ATTR_ROUNDED_DECIMALS] = str(
-                format(round(self.native_value, 3), ".3f")
-            )
 
         # Restituisce gli attributi
         return attributes
@@ -765,7 +714,7 @@ class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     @property
     def native_value(self) -> float:
         """Valore corrente del sensore."""
-        return fmt_float(self._native_value)
+        return self._native_value
 
     @property
     def native_unit_of_measurement(self) -> str:
@@ -806,13 +755,6 @@ class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
             )
             attributes[ATTR_PREFIX_PREZZO_DOMANI + f"{h:02d}"] = self._pun_orari.get(
                 datetime_to_packed_string(data_domani)
-            )
-
-        # Nelle versioni precedenti di Home Assistant
-        # restituisce un valore arrotondato come attributo
-        if not CommonSettings.has_suggested_display_precision:
-            attributes[ATTR_ROUNDED_DECIMALS] = str(
-                format(round(self.native_value, 3), ".3f")
             )
 
         # Restituisce gli attributi
