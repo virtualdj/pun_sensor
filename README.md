@@ -9,6 +9,8 @@ Integrazione per **Home Assistant** (basata inizialmente sullo script [pun-fasce
 
 I valori vengono scaricati dal sito [MercatoElettrico.org](https://gme.mercatoelettrico.org/it-it/Home/Esiti/Elettricita/MGP/Esiti/PUN) per l'intero mese e viene calcolata la media per fasce giorno per giorno, in questo modo verso la fine del mese il valore mostrato si avvicina sempre di più al prezzo reale del PUN in bolletta (per i contratti a prezzo variabile).
 
+Oltre a questo, sono stati inseriti un sensore con il prezzo del PUN orario e uno con il prezzo zonale orario di un'area geografica selezionata in fase di configurazione.
+
 ## Installazione in Home Assistant
 
 Installare usando [HACS](https://hacs.xyz/) tramite il menu con i tre puntini nell'angolo in alto a destra e scegliendo _Add custom repository_ e aggiungendo l'URL https://github.com/virtualdj/pun_sensor alla lista.
@@ -21,7 +23,11 @@ Dopo l'aggiunta dell'integrazione oppure cliccando il pulsante _Configurazione_ 
 
 ![Screenshot impostazioni](screenshots_settings.png "Impostazioni")
 
-Qui è possibile selezionare un'ora del giorno in cui scaricare i prezzi aggiornati dell'energia (default: 1); il minuto di esecuzione, invece, è determinato automaticamente per evitare di gravare eccessivamente sulle API del sito (e mantenuto fisso, finché non l'ora non viene modificata). Nel caso per qualche ragione il sito non fosse raggiungibile, verranno effettuati altri tentativi dopo 10, 60, 120 e 180 minuti.
+La prima casella a discesa permette di selezionare la _zona geografica_ di riferimento per i prezzi zonali.
+
+Tramite lo slider invece è possibile selezionare un'_ora del giorno_ in cui scaricare i prezzi aggiornati dell'energia (default: 1); il minuto di esecuzione, invece, è determinato automaticamente per evitare di gravare eccessivamente sulle API del sito (e mantenuto fisso, finché l'ora non viene modificata). Se per qualche ragione il sito non fosse raggiungibile, verranno effettuati altri tentativi dopo 10, 60, 120 e 180 minuti.
+
+Nel caso si fosse interessati ai prezzi zonali, selezionare un'orario uguale o superiore a 15, così da essere sicuri che il GME abbia pubblicato i dati anche del giorno successivo (accessibili tramite gli [attributi dello stesso sensore](#prezzo-zonale)).
 
 Se la casella di controllo _Usa solo dati reali ad inizio mese_ è **attivata**, all'inizio del mese quando non ci sono i prezzi per tutte le fasce orarie questi vengono disabilitati (non viene mostrato quindi un prezzo in €/kWh finché i dati non sono in numero sufficiente); nel caso invece la casella fosse **disattivata** (default) nel conteggio vengono inclusi gli ultimi giorni del mese precedente in modo da avere sempre un valore in €/kWh.
 
@@ -33,7 +39,9 @@ Se la casella di controllo _Usa solo dati reali ad inizio mese_ è **attivata**,
 
 ![Screenshot integrazione](screenshots_main.png "Dati visualizzati")
 
-L'integrazione fornisce il nome della fascia corrente relativa all'orario di Home Assistant (tra F1 / F2 / F3), i prezzi delle tre fasce F1 / F2 / F3 più la fascia mono-oraria, la fascia F23\* e il prezzo della fascia corrente.
+L'integrazione fornisce il nome della fascia corrente relativa all'orario di Home Assistant (tra F1 / F2 / F3), i prezzi delle tre fasce F1 / F2 / F3 più la fascia mono-oraria, la [fascia F23](#fascia-f23-)\* e il prezzo della fascia corrente. Questi sono i dati intesi come mensili, da paragonare a quelli in bolletta una volta aggiunti costi fissi e tasse (vedere [_prezzo al dettaglio_](#prezzo-al-dettaglio)).
+
+Poi ci sono i due sensori con i prezzi orari (con il simbolo dell'orologio nell'icona), ad esempio utilizzabili per calcoli con impianti fotovoltaici: [PUN orario](#pun-orario) e [prezzo zonale](#prezzo-zonale).
 
 ### Prezzo al dettaglio
 
@@ -74,6 +82,12 @@ Prezzo zonale
   {%- endif %}
 {% endfor %}
 ```
+
+I dati sono visibili anche in _Home Assistant > Strumenti per sviluppatori > Stati_ filtrando `sensor.pun_prezzo_zonale` come entità e attivando la casella di controllo _Attributi_.
+
+### PUN orario
+
+In maniera simile al prezzo zonale, anche il valore del PUN orario (nome sensore: `sensor.pun_orario`) ha gli attributi con i prezzi di oggi e domani, se disponibili.
 
 ### In caso di problemi
 
