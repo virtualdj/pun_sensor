@@ -289,6 +289,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             ),
         )
 
+        # Notifica che i dati PUN (prezzi) sono stati aggiornati
+        self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
+
     async def update_fascia(self, now=None):
         """Aggiorna la fascia oraria corrente (al cambio fascia)."""
 
@@ -380,9 +383,6 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Esce e attende la prossima schedulazione
             return
 
-        # Notifica che i dati PUN sono stati aggiornati con successo
-        self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
-
         # Calcola la data della prossima esecuzione
         next_update_pun = get_next_date(
             dataora=dt_util.now(time_zone=tz_pun),
@@ -411,7 +411,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Aggiorna il nuovo orario
         self.orario_prezzo = get_hour_datetime(dt_util.now(time_zone=tz_pun))
 
-        # Notifica che i dati sono stati aggiornati (fascia)
+        # Notifica che i dati sono stati aggiornati (orario prezzo zonale)
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PREZZO_ZONALE})
 
         # Schedula la prossima esecuzione all'ora successiva

@@ -24,7 +24,13 @@ from homeassistant.helpers.typing import DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import PUNDataUpdateCoordinator
-from .const import COORD_EVENT, DOMAIN, EVENT_UPDATE_PREZZO_ZONALE, EVENT_UPDATE_PUN
+from .const import (
+    COORD_EVENT,
+    DOMAIN,
+    EVENT_UPDATE_FASCIA,
+    EVENT_UPDATE_PREZZO_ZONALE,
+    EVENT_UPDATE_PUN,
+)
 from .interfaces import Fascia, PunValues
 from .utils import datetime_to_packed_string, get_next_date
 
@@ -122,6 +128,17 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 
     def _handle_coordinator_update(self) -> None:
         """Gestisce l'aggiornamento dei dati dal coordinator."""
+
+        # Identifica l'evento che ha scatenato l'aggiornamento
+        if self.coordinator.data is None:
+            return
+        if (coordinator_event := self.coordinator.data.get(COORD_EVENT)) is None:
+            return
+
+        # Aggiorna il sensore in caso di variazione di prezzi
+        if coordinator_event != EVENT_UPDATE_PUN:
+            return
+
         if self.fascia != Fascia.F23:
             # Tutte le fasce tranne F23
             if len(self.coordinator.pun_data.pun[self.fascia]) > 0:
@@ -227,6 +244,17 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
 
     def _handle_coordinator_update(self) -> None:
         """Gestisce l'aggiornamento dei dati dal coordinator."""
+
+        # Identifica l'evento che ha scatenato l'aggiornamento
+        if self.coordinator.data is None:
+            return
+        if (coordinator_event := self.coordinator.data.get(COORD_EVENT)) is None:
+            return
+
+        # Aggiorna il sensore in caso di variazione di fascia
+        if coordinator_event != EVENT_UPDATE_FASCIA:
+            return
+
         self.async_write_ha_state()
 
     @property
@@ -302,6 +330,17 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
 
     def _handle_coordinator_update(self) -> None:
         """Gestisce l'aggiornamento dei dati dal coordinator."""
+
+        # Identifica l'evento che ha scatenato l'aggiornamento
+        if self.coordinator.data is None:
+            return
+        if (coordinator_event := self.coordinator.data.get(COORD_EVENT)) is None:
+            return
+
+        # Aggiorna il sensore in caso di variazione di prezzi o di fascia
+        if coordinator_event not in (EVENT_UPDATE_PUN, EVENT_UPDATE_FASCIA):
+            return
+
         if self.coordinator.fascia_corrente is not None:
             self._available = (
                 len(self.coordinator.pun_data.pun[self.coordinator.fascia_corrente]) > 0
