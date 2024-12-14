@@ -1,7 +1,7 @@
 {
 
   "name": "Prezzi PUN del mese",
-  "homeassistant": "2022.8",
+  "homeassistant": "2023.3",
   "hide_default_branch": true,
   "zip_release": true,
   "filename": "pun_sensor.zip",
