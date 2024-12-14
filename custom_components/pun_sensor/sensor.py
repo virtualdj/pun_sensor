@@ -68,6 +68,7 @@ async def async_setup_entry(
     entities.append(FasciaPUNSensorEntity(coordinator))
     entities.append(PrezzoFasciaPUNSensorEntity(coordinator))
     entities.append(PrezzoZonaleSensorEntity(coordinator))
+    entities.append(PUNOrarioSensorEntity(coordinator))
 
     # Aggiunge i sensori ma non aggiorna automaticamente via web
     # per lasciare il tempo ad Home Assistant di avviarsi
@@ -592,6 +593,181 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
                 attributes[ATTR_PREFIX_PREZZO_DOMANI + f"{h:02d}"] = (
                     self._prezzi_zonali.get(datetime_to_packed_string(data_domani))
                 )
+
+        # Nelle versioni precedenti di Home Assistant
+        # restituisce un valore arrotondato come attributo
+        if not CommonSettings.has_suggested_display_precision:
+            attributes[ATTR_ROUNDED_DECIMALS] = str(
+                format(round(self.native_value, 3), ".3f")
+            )
+
+        # Restituisce gli attributi
+        return attributes
+
+
+class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
+    """Sensore del prezzo PUN aggiornato ogni ora."""
+
+    def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
+        """Inizializza il sensore."""
+        super().__init__(coordinator)
+
+        # Inizializza coordinator e tipo
+        self.coordinator = coordinator
+
+        # ID univoco sensore basato su un nome fisso
+        self.entity_id = ENTITY_ID_FORMAT.format("pun_orario")
+        self._attr_unique_id = self.entity_id
+        self._attr_has_entity_name = True
+
+        # Inizializza le proprietà comuni
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_suggested_display_precision = 6
+        self._available: bool = False
+        self._native_value: float = 0
+        self._friendly_name: str = "PUN orario"
+        self._pun_orari: dict[str, float | None] = {}
+
+    def _handle_coordinator_update(self) -> None:
+        """Gestisce l'aggiornamento dei dati dal coordinator."""
+
+        # Identifica l'evento che ha scatenato l'aggiornamento
+        if self.coordinator.data is None:
+            return
+        if (coordinator_event := self.coordinator.data.get(COORD_EVENT)) is None:
+            return
+
+        # Aggiornati i prezzi PUN
+        if coordinator_event == EVENT_UPDATE_PUN:
+            # Verifica che il coordinator abbia i prezzi
+            if self.coordinator.pun_data.pun_orari:
+                # Copia i dati dal coordinator in locale (per il backup)
+                self._pun_orari = dict(self.coordinator.pun_data.pun_orari)
+
+        # Cambiato l'orario del prezzo
+        if coordinator_event in (EVENT_UPDATE_PUN, EVENT_UPDATE_PREZZO_ZONALE):
+            # Controlla se il PUN orario esiste per l'ora corrente
+            if (
+                datetime_to_packed_string(self.coordinator.orario_prezzo)
+                in self._pun_orari
+            ):
+                # Aggiorna il valore al prezzo orario
+                if (
+                    valore := self._pun_orari[
+                        datetime_to_packed_string(self.coordinator.orario_prezzo)
+                    ]
+                ) is not None:
+                    self._native_value = valore
+                    self._available = True
+                else:
+                    # Prezzo non disponibile
+                    self._available = False
+            else:
+                # Orario non disponibile
+                self._available = False
+
+        # Aggiorna lo stato di Home Assistant
+        self.async_write_ha_state()
+
+    @property
+    def extra_restore_state_data(self) -> ExtraStoredData:
+        """Determina i dati da salvare per il ripristino successivo."""
+
+        # Salva i dati per la prossima istanza
+        return RestoredExtraData(
+            {
+                "pun_orari": self._pun_orari,
+            }
+        )
+
+    async def async_added_to_hass(self) -> None:
+        """Entità aggiunta ad Home Assistant."""
+        await super().async_added_to_hass()
+
+        # Recupera lo stato precedente, se esiste
+        if (old_data := await self.async_get_last_extra_data()) is not None:
+            # Recupera il dizionario con i valori precedenti
+            old_data_dict = old_data.as_dict()
+
+            # Valori dei prezzi orari
+            if (old_pun_orari := old_data_dict.get("pun_orari")) is not None:
+                self._pun_orari = old_pun_orari
+
+                # Controlla se il prezzo orario esiste per l'ora corrente
+                if (
+                    datetime_to_packed_string(self.coordinator.orario_prezzo)
+                    in self._pun_orari
+                ):
+                    # Aggiorna il valore al prezzo orario
+                    if (
+                        valore := self._pun_orari[
+                            datetime_to_packed_string(self.coordinator.orario_prezzo)
+                        ]
+                    ) is not None:
+                        self._native_value = valore
+                        self._available = True
+                    else:
+                        # Prezzo non disponibile
+                        self._available = False
+                else:
+                    # Imposta come non disponibile
+                    self._available = False
+
+    @property
+    def should_poll(self) -> bool:
+        """Determina l'aggiornamento automatico."""
+        return False
+
+    @property
+    def available(self) -> bool:
+        """Determina se il valore è disponibile."""
+        return self._available
+
+    @property
+    def native_value(self) -> float:
+        """Valore corrente del sensore."""
+        return fmt_float(self._native_value)
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Unita' di misura."""
+        return f"{CURRENCY_EURO}/{UnitOfEnergy.KILO_WATT_HOUR}"
+
+    @property
+    def icon(self) -> str:
+        """Icona da usare nel frontend."""
+        return "mdi:invoice-clock-outline"
+
+    @property
+    def name(self) -> str | None:
+        """Restituisce il nome del sensore."""
+        return self._friendly_name
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Restituisce gli attributi di stato."""
+
+        # Crea il dizionario degli attributi
+        attributes: dict[str, Any] = {}
+
+        # Aggiunge i prezzi orari negli attributi, ora per ora
+        for h in range(24):
+            # Prezzi di oggi
+            data_oggi = get_next_date(
+                dataora=self.coordinator.orario_prezzo, ora=h, offset=0
+            )
+            attributes[ATTR_PREFIX_PREZZO_OGGI + f"{h:02d}"] = self._pun_orari.get(
+                datetime_to_packed_string(data_oggi)
+            )
+
+        for h in range(24):
+            # Prezzi di domani
+            data_domani = get_next_date(
+                dataora=self.coordinator.orario_prezzo, ora=h, offset=1
+            )
+            attributes[ATTR_PREFIX_PREZZO_DOMANI + f"{h:02d}"] = self._pun_orari.get(
+                datetime_to_packed_string(data_domani)
+            )
 
         # Nelle versioni precedenti di Home Assistant
         # restituisce un valore arrotondato come attributo

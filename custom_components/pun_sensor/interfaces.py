@@ -19,6 +19,8 @@ class PunData:
 
         self.zona: Zona | None = None
         self.prezzi_zonali: dict[str, float | None] = {}
+        self.pun_orari: dict[str, float | None] = {}
+
 
 class Fascia(Enum):
     """Enumerazione con i tipi di fascia oraria."""

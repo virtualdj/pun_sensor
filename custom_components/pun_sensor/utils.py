@@ -249,6 +249,8 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                                 microsecond=0,
                             )
                         )
+                        # E salva il prezzo per quell'orario
+                        pun_data.pun_orari[orario_prezzo] = prezzo
                 else:
                     # PUN non valido
                     _LOGGER.warning(
