@@ -197,12 +197,13 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Imposta gli header della richiesta
         heads = {
             "moduleid": "12103",
-            "referrer": "https://gme.mercatoelettrico.org/en-us/Home/Results/Electricity/MGP/Download?valore=Prezzi",
+            "referer": "https://gme.mercatoelettrico.org/en-us/Home/Results/Electricity/MGP/Download?valore=Prezzi",
             "sec-ch-ua-mobile": "?0",
             "sec-ch-ua-platform": "Windows",
             "sec-fetch-dest": "empty",
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-origin",
+            "sec-gpc": "1",
             "tabid": "1749",
             "userid": "-1",
         }
@@ -245,6 +246,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.pun_data = extract_xml(
             archive, self.pun_data, dt_util.now(time_zone=tz_pun).date()
         )
+        archive.close()
 
         # Per ogni fascia, calcola il valore del pun
         for fascia, value_list in self.pun_data.pun.items():
