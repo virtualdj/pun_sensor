@@ -1,8 +1,10 @@
 """UI di configurazione per pun_sensor."""
 
+from awesomeversion.awesomeversion import AwesomeVersion
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
@@ -10,6 +12,17 @@ import homeassistant.helpers.config_validation as cv
 
 from .const import CONF_ACTUAL_DATA_ONLY, CONF_SCAN_HOUR, CONF_ZONA, DOMAIN
 from .interfaces import DEFAULT_ZONA, Zona
+
+# Configurazione del selettore compatibile con HA 2023.4.0
+selector_config = selector.SelectSelectorConfig(
+    options=[
+        selector.SelectOptionDict(value=zona.name, label=zona.value) for zona in Zona
+    ],
+    mode=selector.SelectSelectorMode.DROPDOWN,
+    translation_key="zona",
+)
+if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2023.9.0"):
+    selector_config["sort"] = True
 
 
 class PUNOptionsFlow(config_entries.OptionsFlow):
@@ -33,17 +46,7 @@ class PUNOptionsFlow(config_entries.OptionsFlow):
                 default=self.config_entry.options.get(
                     CONF_ZONA, self.config_entry.data[CONF_ZONA]
                 ),
-            ): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=[
-                        selector.SelectOptionDict(value=zona.name, label=zona.value)
-                        for zona in Zona
-                    ],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                    translation_key="zona",
-                    sort=False,
-                ),
-            ),
+            ): selector.SelectSelector(selector_config),
             vol.Required(
                 CONF_SCAN_HOUR,
                 default=self.config_entry.options.get(
@@ -92,15 +95,7 @@ class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         # Schema dati di configurazione (con default fissi)
         data_schema = {
             vol.Required(CONF_ZONA, default=DEFAULT_ZONA.name): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=[
-                        selector.SelectOptionDict(value=zona.name, label=zona.value)
-                        for zona in Zona
-                    ],
-                    mode=selector.SelectSelectorMode.DROPDOWN,
-                    translation_key="zona",
-                    sort=False,
-                ),
+                selector_config
             ),
             vol.Required(CONF_SCAN_HOUR, default=1): vol.All(
                 cv.positive_int, vol.Range(min=0, max=23)
