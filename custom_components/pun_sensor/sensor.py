@@ -3,6 +3,8 @@
 import logging
 from typing import Any
 
+from awesomeversion.awesomeversion import AwesomeVersion
+
 from homeassistant.components.sensor import (
     ENTITY_ID_FORMAT,
     SensorDeviceClass,
@@ -10,7 +12,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CURRENCY_EURO, UnitOfEnergy
+from homeassistant.const import CURRENCY_EURO, UnitOfEnergy, __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import (
@@ -724,6 +726,8 @@ class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     @property
     def icon(self) -> str:
         """Icona da usare nel frontend."""
+        if AwesomeVersion(HA_VERSION) < AwesomeVersion("2024.1.0"):
+            return "mdi:receipt-clock-outline"
         return "mdi:invoice-clock-outline"
 
     @property
