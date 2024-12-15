@@ -34,7 +34,6 @@ from .const import (
 from .interfaces import Fascia, PunValues
 from .utils import datetime_to_packed_string, get_next_date
 
-ATTR_ROUNDED_DECIMALS = "rounded_decimals"
 ATTR_PREFIX_PREZZO_OGGI = "oggi_h_"
 ATTR_PREFIX_PREZZO_DOMANI = "domani_h_"
 
