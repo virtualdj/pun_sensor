@@ -221,13 +221,13 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
             # Estrae l'ora dall'XML
             ora = int(prezzi.find("Ora").text) - 1  # 1..24
 
-            # Verifica se la data odierna non è successiva ad oggi
-            if dat_date <= today:
-                # Estrae il prezzo PUN dall'XML in un float
-                if (prezzo_xml := prezzi.find("PUN")) is not None:
-                    prezzo_string = prezzo_xml.text.replace(".", "").replace(",", ".")
-                    prezzo = float(prezzo_string) / 1000
+            # Estrae il prezzo PUN dall'XML in un float
+            if (prezzo_xml := prezzi.find("PUN")) is not None:
+                prezzo_string = prezzo_xml.text.replace(".", "").replace(",", ".")
+                prezzo = float(prezzo_string) / 1000
 
+                # Per le medie mensili, considera solo i dati fino ad oggi
+                if dat_date <= today:
                     # Estrae la fascia oraria
                     fascia = get_fascia_for_xml(dat_date, festivo, ora)
 
@@ -235,29 +235,29 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                     pun_data.pun[Fascia.MONO].append(prezzo)
                     pun_data.pun[fascia].append(prezzo)
 
-                    # Se odierno, lo salva nel PUN orario
-                    if dat_date == today:
-                        # Compone l'orario
-                        orario_prezzo = datetime_to_packed_string(
-                            datetime(
-                                year=dat_date.year,
-                                month=dat_date.month,
-                                day=dat_date.day,
-                                hour=ora,
-                                minute=0,
-                                second=0,
-                                microsecond=0,
-                            )
+                # Per il PUN orario, considera solo oggi e domani
+                if dat_date >= today:
+                    # Compone l'orario
+                    orario_prezzo = datetime_to_packed_string(
+                        datetime(
+                            year=dat_date.year,
+                            month=dat_date.month,
+                            day=dat_date.day,
+                            hour=ora,
+                            minute=0,
+                            second=0,
+                            microsecond=0,
                         )
-                        # E salva il prezzo per quell'orario
-                        pun_data.pun_orari[orario_prezzo] = prezzo
-                else:
-                    # PUN non valido
-                    _LOGGER.warning(
-                        "PUN non specificato per %s ad orario: %s.", dat_string, ora
                     )
+                    # E salva il prezzo per quell'orario
+                    pun_data.pun_orari[orario_prezzo] = prezzo
+            else:
+                # PUN non valido
+                _LOGGER.warning(
+                    "PUN non specificato per %s ad orario: %s.", dat_string, ora
+                )
 
-            # Per oggi e domani estrae i prezzi zonali
+            # Per i prezzi zonali, considera solo oggi e domani
             if dat_date >= today:
                 # Compone l'orario
                 orario_prezzo = datetime_to_packed_string(
