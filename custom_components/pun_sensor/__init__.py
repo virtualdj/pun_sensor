@@ -186,7 +186,14 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
         # Implementata zona per prezzi zonali
         new_data = {**config_entry.data}
         new_data[CONF_ZONA] = DEFAULT_ZONA.name
-        hass.config_entries.async_update_entry(config_entry, data=new_data, version=2)
+
+        if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2024.3.0"):
+            hass.config_entries.async_update_entry(
+                config_entry, data=new_data, version=2
+            )
+        else:
+            # Le release precedenti ad HA 2024.3.0 non supportano la versione
+            hass.config_entries.async_update_entry(config_entry, data=new_data)
 
     # Migrazione completata
     _LOGGER.debug(
