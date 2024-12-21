@@ -1,5 +1,6 @@
 """Implementazione sensori di pun_sensor."""
 
+from abc import ABC
 import logging
 from typing import Any
 
@@ -14,6 +15,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CURRENCY_EURO, UnitOfEnergy, __version__ as HA_VERSION
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import (
     ExtraStoredData,
@@ -53,7 +55,7 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][config.entry_id]
 
     # Crea i sensori dei valori del pun (legati al coordinator)
-    entities: list[SensorEntity] = []
+    entities: list[PUNEntity] = []
     entities.extend(
         PUNSensorEntity(coordinator, fascia) for fascia in PunValues().value
     )
@@ -69,7 +71,24 @@ async def async_setup_entry(
     async_add_entities(entities, update_before_add=False)
 
 
-class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
+class PUNEntity(CoordinatorEntity, SensorEntity, ABC):
+    """Classe astratta che rappresenta un sensore inserito nell'hub PUN."""
+
+    @property
+    def should_poll(self) -> bool:
+        """Determina l'aggiornamento automatico."""
+        return False
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Raggruppa i sensori in un unico dispositivo."""
+        return {
+            "identifiers": {(DOMAIN, None)},
+            "manufacturer": "Gestore Mercati Energetici",
+        }
+
+
+class PUNSensorEntity(PUNEntity, RestoreEntity):
     """Sensore PUN relativo al prezzo medio mensile per fasce."""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator, fascia: Fascia) -> None:
@@ -160,11 +179,6 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
                 self._native_value = old_native_value
 
     @property
-    def should_poll(self) -> bool:
-        """Determina l'aggiornamento automatico."""
-        return False
-
-    @property
     def available(self) -> bool:
         """Determina se il valore è disponibile."""
         return self._available
@@ -194,7 +208,7 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         return None
 
 
-class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
+class FasciaPUNSensorEntity(PUNEntity):
     """Sensore che rappresenta il nome la fascia oraria PUN corrente."""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
@@ -223,11 +237,6 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
             return
 
         self.async_write_ha_state()
-
-    @property
-    def should_poll(self) -> bool:
-        """Determina l'aggiornamento automatico."""
-        return False
 
     @property
     def available(self) -> bool:
@@ -273,7 +282,7 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
         return "Fascia corrente"
 
 
-class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
+class PrezzoFasciaPUNSensorEntity(PUNEntity, RestoreEntity):
     """Sensore che rappresenta il prezzo PUN della fascia corrente."""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
@@ -349,11 +358,6 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
                 self._friendly_name = old_friendly_name
 
     @property
-    def should_poll(self) -> bool:
-        """Determina l'aggiornamento automatico."""
-        return False
-
-    @property
     def available(self) -> bool:
         """Determina se il valore è disponibile."""
         return self._available
@@ -379,7 +383,7 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
         return self._friendly_name
 
 
-class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
+class PrezzoZonaleSensorEntity(PUNEntity, RestoreEntity):
     """Sensore del prezzo zonale aggiornato ogni ora."""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
@@ -534,11 +538,6 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
                     self._available = False
 
     @property
-    def should_poll(self) -> bool:
-        """Determina l'aggiornamento automatico."""
-        return False
-
-    @property
     def available(self) -> bool:
         """Determina se il valore è disponibile."""
         return self._available
@@ -594,7 +593,7 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         return attributes
 
 
-class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
+class PUNOrarioSensorEntity(PUNEntity, RestoreEntity):
     """Sensore del prezzo PUN aggiornato ogni ora."""
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
@@ -701,11 +700,6 @@ class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
                 else:
                     # Imposta come non disponibile
                     self._available = False
-
-    @property
-    def should_poll(self) -> bool:
-        """Determina l'aggiornamento automatico."""
-        return False
 
     @property
     def available(self) -> bool:
