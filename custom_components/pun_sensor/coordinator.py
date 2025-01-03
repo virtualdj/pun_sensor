@@ -178,16 +178,18 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         """Aggiornamento dati a intervalli prestabiliti."""
 
         # Calcola l'intervallo di date per il mese corrente
-        date_end = dt_util.now().date() + timedelta(
-            days=1
-        )  # Necessario per prezzo zonale (domani)
+        date_end = dt_util.now().date()
         date_start = date(date_end.year, date_end.month, 1)
 
         # All'inizio del mese, aggiunge i valori del mese precedente
         # a meno che CONF_ACTUAL_DATA_ONLY non sia impostato
-        if (not self.actual_data_only) and (date_end.day < 5):
+        if (not self.actual_data_only) and (date_end.day < 4):
             date_start = date_start - timedelta(days=3)
 
+        # Aggiunge un giorno (domani) per il calcolo del prezzo zonale
+        date_end += timedelta(days=1)
+
+        # Converte le date in stringa da passare all'API Mercato elettrico
         start_date_param = date_start.strftime("%Y%m%d")
         end_date_param = date_end.strftime("%Y%m%d")
 
