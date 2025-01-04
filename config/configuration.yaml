@@ -1,11 +1,21 @@
 # Example configuration.yaml entry
-default_config:
+# Do not use default_config
+# default_config:
+# But enable the single components instead:
+backup:
+config:
+energy:
+history:
+homeassistant_alerts:
+logbook:
+my:
+sun:
+webhook:
 
 logger:
   default: info
   logs:
     homeassistant.setup: warning
-    homeassistant.components.go2rtc: fatal
     custom_components.pun_sensor: debug
 
 # Disable ffmpeg
