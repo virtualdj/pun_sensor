@@ -1,8 +1,10 @@
 wheel
 colorlog==6.8.2
 pip>=21.3.1
-ruff==0.5.1
-pre-commit==3.7.0
+ruff==0.8.3
+pre-commit==4.0.0
 zlib_ng
 zeroconf
+defusedxml
+mutagen
 homeassistant
