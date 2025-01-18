@@ -20,6 +20,12 @@
       "problemMatcher": []
     },
     {
+      "label": "Show Home Assistant version",
+      "type": "shell",
+      "command": "clear ; echo -e \"The installed Home Assistant version is $(hass --version).\\n\"",
+      "problemMatcher": []
+    },
+    {
       "label": "Clear Home Assistant config",
       "type": "shell",
       "command": ".devcontainer/scripts/clear-config",
