@@ -6,9 +6,9 @@ import logging
 import random
 from statistics import mean
 import zipfile
+from zoneinfo import ZoneInfo
 
 from aiohttp import ClientSession, ServerConnectionError
-from zoneinfo import ZoneInfo
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
