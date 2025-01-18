@@ -28,12 +28,9 @@ if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2023.9.0"):
 class PUNOptionsFlow(config_entries.OptionsFlow):
     """Opzioni per prezzi PUN (= riconfigurazione successiva)."""
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, entry: config_entries.ConfigEntry) -> None:
         """Inizializzazione opzioni."""
-        if AwesomeVersion(HA_VERSION) < AwesomeVersion("2024.12.0b0"):
-            entry: config_entries.ConfigEntry
-            entry, *args = args
-            self.config_entry = entry
+        self.config_entry = entry
 
     async def async_step_init(self, user_input=None) -> FlowResult:
         """Gestisce le opzioni di configurazione."""
@@ -82,9 +79,7 @@ class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> PUNOptionsFlow:
         """Ottiene le opzioni per questa configurazione."""
-        if AwesomeVersion(HA_VERSION) < AwesomeVersion("2024.12.0b0"):
-            return PUNOptionsFlow(config_entry)
-        return PUNOptionsFlow()
+        return PUNOptionsFlow(config_entry)
 
     async def async_step_user(self, user_input=None):
         """Gestione prima configurazione da Home Assistant."""
