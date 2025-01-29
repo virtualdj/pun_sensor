@@ -24,15 +24,15 @@ from homeassistant.helpers.typing import DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import PUNDataUpdateCoordinator
-from .const import (
+from lib.const import (
     COORD_EVENT,
     DOMAIN,
     EVENT_UPDATE_FASCIA,
     EVENT_UPDATE_PREZZO_ZONALE,
     EVENT_UPDATE_PUN,
 )
-from .interfaces import Fascia, PunValues
-from .utils import datetime_to_packed_string, get_next_date
+from lib.interfaces import Fascia, PunValues
+from lib.utils import datetime_to_packed_string, get_next_date
 
 ATTR_PREFIX_PREZZO_OGGI = "oggi_h_"
 ATTR_PREFIX_PREZZO_DOMANI = "domani_h_"
