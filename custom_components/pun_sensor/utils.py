@@ -7,7 +7,7 @@ from zipfile import ZipFile
 import defusedxml.ElementTree as et  # type: ignore[import-untyped]
 import holidays
 
-from .interfaces import Fascia, PunData
+from .interfaces import Fascia, PunData, PunDataMP
 
 # Ottiene il logger
 _LOGGER = logging.getLogger(__name__)
@@ -36,6 +36,28 @@ def get_fascia_for_xml(data: date, festivo: bool, ora: int) -> Fascia:
         return Fascia.F1
     return Fascia.F3
 
+def get_fascia_for_xml2(data: date, festivo: bool, ora: int) -> Fascia:
+    """Restituisce la fascia oraria di un determinato giorno/ora."""
+    # F1 = lu-ve 8-19
+    # F2 = lu-ve 7-8, lu-ve 19-23, sa 7-23
+    # F3 = lu-sa 0-7, lu-sa 23-24, do, festivi
+
+    # Festivi e domeniche
+    if festivo or (data.weekday() == 6):
+        return Fascia.F3_MP
+
+    # Sabato
+    if data.weekday() == 5:
+        if 7 <= ora < 23:
+            return Fascia.F2_MP
+        return Fascia.F3_MP
+
+    # Altri giorni della settimana
+    if ora == 7 or 19 <= ora < 23:
+        return Fascia.F2_MP
+    if 8 <= ora < 19:
+        return Fascia.F1_MP
+    return Fascia.F3_MP
 
 def get_fascia(dataora: datetime) -> tuple[Fascia, datetime]:
     """Restituisce la fascia della data/ora indicata e la data del prossimo cambiamento."""
@@ -233,6 +255,120 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
 
                     # Calcola le statistiche
                     pun_data.pun[Fascia.MONO].append(prezzo)
+                    pun_data.pun[fascia].append(prezzo)
+
+                # Per il PUN orario, considera solo oggi e domani
+                if dat_date >= today:
+                    # Compone l'orario
+                    orario_prezzo = datetime_to_packed_string(
+                        datetime(
+                            year=dat_date.year,
+                            month=dat_date.month,
+                            day=dat_date.day,
+                            hour=ora,
+                            minute=0,
+                            second=0,
+                            microsecond=0,
+                        )
+                    )
+                    # E salva il prezzo per quell'orario
+                    pun_data.pun_orari[orario_prezzo] = prezzo
+            else:
+                # PUN non valido
+                _LOGGER.warning(
+                    "PUN non specificato per %s ad orario: %s.", dat_string, ora
+                )
+
+            # Per i prezzi zonali, considera solo oggi e domani
+            if dat_date >= today:
+                # Compone l'orario
+                orario_prezzo = datetime_to_packed_string(
+                    datetime(
+                        year=dat_date.year,
+                        month=dat_date.month,
+                        day=dat_date.day,
+                        hour=ora,
+                        minute=0,
+                        second=0,
+                        microsecond=0,
+                    )
+                )
+
+                # Controlla che la zona del prezzo zonale sia impostata
+                if pun_data.zona is not None:
+                    # Estrae il prezzo zonale dall'XML in un float
+                    # basandosi sul nome dell'enum
+                    if (
+                        prezzo_zonale_xml := prezzi.find(pun_data.zona.name)
+                    ) is not None:
+                        prezzo_zonale_string = prezzo_zonale_xml.text.replace(
+                            ".", ""
+                        ).replace(",", ".")
+                        pun_data.prezzi_zonali[orario_prezzo] = (
+                            float(prezzo_zonale_string) / 1000
+                        )
+                    else:
+                        pun_data.prezzi_zonali[orario_prezzo] = None
+
+    return pun_data
+
+def extract_xml2(archive: ZipFile, pun_data: PunDataMP, today: date) -> PunDataMP:
+    """Estrae i valori del pun per ogni fascia da un archivio zip contenente un XML.
+
+    Args:
+    archive (ZipFile): archivio ZIP con i file XML all'interno.
+    pun_data (PunData): riferimento alla struttura che verrà modificata con i dati da XML.
+    today (date): data di oggi, utilizzata per memorizzare il prezzo zonale.
+
+    Returns:
+    List[ list[MONO: float], list[F1: float], list[F2: float], list[F3: float] ]
+
+    """
+    # Carica le festività
+    it_holidays = holidays.IT()  # type: ignore[attr-defined]
+
+    # Azzera i dati precedenti
+    for fascia_da_svuotare in pun_data.pun.values():
+        fascia_da_svuotare.clear()
+
+    # Esamina ogni file XML nello ZIP (ordinandoli prima)
+    for fn in sorted(archive.namelist()):
+        # Scompatta il file XML in memoria
+        xml_tree = et.parse(archive.open(fn))
+
+        # Parsing dell'XML (1 file = 1 giorno)
+        xml_root = xml_tree.getroot()
+
+        # Estrae la data dal primo elemento (sarà identica per gli altri)
+        dat_string = xml_root.find("Prezzi").find("Data").text  # YYYYMMDD
+
+        # Converte la stringa giorno in data
+        dat_date = date(
+            int(dat_string[0:4]),
+            int(dat_string[4:6]),
+            int(dat_string[6:8]),
+        )
+
+        # Verifica la festività
+        festivo = dat_date in it_holidays
+
+        # Estrae le rimanenti informazioni
+        for prezzi in xml_root.iter("Prezzi"):
+            # Estrae l'ora dall'XML
+            ora = int(prezzi.find("Ora").text) - 1  # 1..24
+
+            # Estrae il prezzo PUN dall'XML in un float
+            if (prezzo_xml := prezzi.find("PUN")) is not None:
+                prezzo_string = prezzo_xml.text.replace(".", "").replace(",", ".")
+                prezzo = float(prezzo_string) / 1000
+
+                # Per le medie mensili, considera solo i dati fino ad oggi
+                if dat_date <= today:
+                    # Estrae la fascia oraria
+                    fascia = get_fascia_for_xml2(dat_date, festivo, ora)
+
+                    # Calcola le statistiche
+                    pun_data.pun[Fascia.MONO_MP].append(prezzo)
                     pun_data.pun[fascia].append(prezzo)
 
                 # Per il PUN orario, considera solo oggi e domani
