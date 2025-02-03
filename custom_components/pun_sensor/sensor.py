@@ -31,7 +31,7 @@ from .const import (
     EVENT_UPDATE_PREZZO_ZONALE,
     EVENT_UPDATE_PUN,
 )
-from .interfaces import Fascia, PunValues
+from .interfaces import Fascia, PunValues, PunValuesMP
 from .utils import datetime_to_packed_string, get_next_date
 
 ATTR_PREFIX_PREZZO_OGGI = "oggi_h_"
@@ -56,6 +56,9 @@ async def async_setup_entry(
     entities: list[SensorEntity] = []
     entities.extend(
         PUNSensorEntity(coordinator, fascia) for fascia in PunValues().value
+    )
+    entities.extend(
+        PUNSensorEntity(coordinator, fascia) for fascia in PunValuesMP().value
     )
 
     # Crea sensori aggiuntivi
@@ -92,6 +95,16 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
                 self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f3")
             case Fascia.F23:
                 self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f23")
+            case Fascia.MONO_MP:
+                self.entity_id = ENTITY_ID_FORMAT.format("pun_mono_orario_mp")
+            case Fascia.F1_MP:
+                self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f1_mp")
+            case Fascia.F2_MP:
+                self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f2_mp")
+            case Fascia.F3_MP:
+                self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f3_mp")
+            case Fascia.F23_MP:
+                self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_f23_mp")
             case _:
                 self.entity_id = None
         self._attr_unique_id = self.entity_id
@@ -116,25 +129,42 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         if coordinator_event != EVENT_UPDATE_PUN:
             return
 
-        if self.fascia != Fascia.F23:
+        if self.fascia != Fascia.F23 and self.fascia != Fascia.F23_MP:
             # Tutte le fasce tranne F23
-            if len(self.coordinator.pun_data.pun[self.fascia]) > 0:
-                # Ci sono dati, sensore disponibile
-                self._available = True
-                self._native_value = self.coordinator.pun_values.value[self.fascia]
-            else:
-                # Non ci sono dati, sensore non disponibile
-                self._available = False
-
+            if "_MP" not in self.fascia.value:
+                if len(self.coordinator.pun_data.pun[self.fascia]) > 0:
+                    # Ci sono dati, sensore disponibile
+                    self._available = True
+                    self._native_value = self.coordinator.pun_values.value[self.fascia]
+                else:
+                    # Non ci sono dati, sensore non disponibile
+                    self._available = False
+            elif "_MP" in self.fascia.value:
+                if len(self.coordinator.pun_data_mp.pun[self.fascia]) > 0:
+                    # Ci sono dati, sensore disponibile
+                    self._available = True
+                    self._native_value = self.coordinator.pun_values_mp.value[self.fascia]
+                else:
+                    # Non ci sono dati, sensore non disponibile
+                    self._available = False
         elif (
             len(self.coordinator.pun_data.pun[Fascia.F2])
             and len(self.coordinator.pun_data.pun[Fascia.F3])
-        ) > 0:
+        ) > 0 and self.fascia == Fascia.F23:
             # Caso speciale per fascia F23: affinché sia disponibile devono
             # esserci dati sia sulla fascia F2 che sulla F3,
             # visto che è calcolata a partire da questi
             self._available = True
             self._native_value = self.coordinator.pun_values.value[self.fascia]
+        elif (
+            len(self.coordinator.pun_data_mp.pun[Fascia.F2_MP])
+            and len(self.coordinator.pun_data_mp.pun[Fascia.F3_MP])
+        ) > 0 and self.fascia == Fascia.F23_MP:
+            # Caso speciale per fascia F23: affinché sia disponibile devono
+            # esserci dati sia sulla fascia F2 che sulla F3,
+            # visto che è calcolata a partire da questi
+            self._available = True
+            self._native_value = self.coordinator.pun_values_mp.value[self.fascia]
         else:
             # Non ci sono dati, sensore non disponibile
             self._available = False
@@ -189,8 +219,12 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         """Restituisce il nome del sensore."""
         if self.fascia == Fascia.MONO:
             return "PUN mono-orario"
-        if self.fascia:
+        if self.fascia == Fascia.MONO_MP:
+            return "PUN mono-orario mese precedente"
+        if self.fascia and "_MP" not in str(self.fascia.value):
             return f"PUN fascia {self.fascia.value}"
+        if self.fascia and "_MP" in str(self.fascia.value):
+            return f"PUN fascia {self.fascia.value.replace("_MP","")} mese precedente"
         return None
 
 
