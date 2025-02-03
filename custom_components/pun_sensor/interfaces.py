@@ -21,7 +21,24 @@ class PunData:
         self.prezzi_zonali: dict[str, float | None] = {}
         self.pun_orari: dict[str, float | None] = {}
 
+class PunDataMP:
+    """Classe che contiene i valori del PUN orario per ciascuna fascia."""
 
+    def __init__(self) -> None:
+        """Inizializza le liste di ciascuna fascia."""
+
+        self.pun: dict[Fascia, list[float]] = {
+            Fascia.MONO_MP: [],
+            Fascia.F1_MP: [],
+            Fascia.F2_MP: [],
+            Fascia.F3_MP: [],
+            Fascia.F23_MP: [],
+        }
+
+        self.zona: Zona | None = None
+        self.prezzi_zonali: dict[str, float | None] = {}
+        self.pun_orari: dict[str, float | None] = {}
+        
 class Fascia(Enum):
     """Enumerazione con i tipi di fascia oraria."""
 
@@ -30,6 +47,11 @@ class Fascia(Enum):
     F2 = "F2"
     F3 = "F3"
     F23 = "F23"
+    MONO_MP = "MONO_MP"
+    F1_MP = "F1_MP"
+    F2_MP = "F2_MP"
+    F3_MP = "F3_MP"
+    F23_MP = "F23_MP"
 
 
 class PunValues:
@@ -44,6 +66,17 @@ class PunValues:
         Fascia.F23: 0.0,
     }
 
+class PunValuesMP:
+    """Classe che contiene il PUN del mese precedente di ciascuna fascia."""
+
+    value: dict[Fascia, float]
+    value = {
+        Fascia.MONO_MP: 0.0,
+        Fascia.F1_MP: 0.0,
+        Fascia.F2_MP: 0.0,
+        Fascia.F3_MP: 0.0,
+        Fascia.F23_MP: 0.0,
+    }
 
 class Zona(Enum):
     """Enumerazione con i nomi delle zone per i prezzi zonali."""
