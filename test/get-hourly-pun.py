@@ -20,8 +20,9 @@ async def main():
     async with aiohttp.ClientSession() as session:
         downloader = DataDownloader(logger, session)
         await downloader.get(tz_pun)
-        # Dump the `pun_orari` structure as JSON to stdout
-        print(json.dumps(downloader.pun_data.pun_orari))
+
+        # Dump the `pun_orari` structure as JSON to stdout, mixing price + band
+        print(json.dumps(dict(map(lambda date: (date, [downloader.pun_data.pun_orari[date], downloader.pun_data.fasce_orarie[date]]), downloader.pun_data.pun_orari.keys()))))
 
 # Start asyncio loop
 if sys.platform == 'win32':

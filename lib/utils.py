@@ -226,11 +226,11 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                 prezzo_string = prezzo_xml.text.replace(".", "").replace(",", ".")
                 prezzo = float(prezzo_string) / 1000
 
+                # Estrae la fascia oraria
+                fascia = get_fascia_for_xml(dat_date, festivo, ora)
+
                 # Per le medie mensili, considera solo i dati fino ad oggi
                 if dat_date <= today:
-                    # Estrae la fascia oraria
-                    fascia = get_fascia_for_xml(dat_date, festivo, ora)
-
                     # Calcola le statistiche
                     pun_data.pun[Fascia.MONO].append(prezzo)
                     pun_data.pun[fascia].append(prezzo)
@@ -251,6 +251,7 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                     )
                     # E salva il prezzo per quell'orario
                     pun_data.pun_orari[orario_prezzo] = prezzo
+                    pun_data.fasce_orarie[orario_prezzo] = fascia
             else:
                 # PUN non valido
                 _LOGGER.warning(
