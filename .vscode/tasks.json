@@ -32,9 +32,15 @@
       "problemMatcher": []
     },
     {
-      "label": "Upgrade Home Assistant to latest (beta)",
+      "label": "Upgrade Home Assistant to latest (stable)",
       "type": "shell",
       "command": ".devcontainer/scripts/upgrade",
+      "problemMatcher": []
+    },
+    {
+      "label": "Upgrade Home Assistant to latest (beta)",
+      "type": "shell",
+      "command": ".devcontainer/scripts/upgrade --prerelease",
       "problemMatcher": []
     },
     {
