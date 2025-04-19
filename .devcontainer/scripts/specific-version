@@ -5,4 +5,8 @@ set -e
 cd "$(dirname "$0")/../.."
 
 read -p 'Set Home Assistant version: ' -r version
-uv pip install --system --prefix "/home/vscode/.local/" --upgrade homeassistant=="$version"
+if [ ! -z "$version" ]; then
+    uv pip install --system --prefix "/home/vscode/.local/" --upgrade homeassistant=="$version"
+else
+    echo "No version specified, aborting."
+fi
