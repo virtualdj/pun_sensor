@@ -19,10 +19,16 @@ class PunData:
 
         self.zona: Zona | None = None
         self.prezzi_zonali: dict[str, float | None] = {}
+        # PUN da ora (YYYYMMDDHH) a prezzo
         self.pun_orari: dict[str, float | None] = {}
+        # Fascia da ora (YYYYMMDDHH) a Fascia
+        self.fasce_orarie: dict[str, Fascia] = {}
+
+    def __repr__(self):
+        return f'zona: {self.zona}, prezzi_zonali: {self.prezzi_zonali}, pun_orari: {self.pun_orari}'
 
 
-class Fascia(Enum):
+class Fascia(str, Enum):
     """Enumerazione con i tipi di fascia oraria."""
 
     MONO = "MONO"
@@ -43,6 +49,9 @@ class PunValues:
         Fascia.F3: 0.0,
         Fascia.F23: 0.0,
     }
+
+    def __repr__(self):
+        return repr(self.value)
 
 
 class Zona(Enum):

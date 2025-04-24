@@ -4,11 +4,9 @@ from datetime import date, datetime, timedelta
 import io
 import logging
 import random
-from statistics import mean
-import zipfile
 from zoneinfo import ZoneInfo
 
-from aiohttp import ClientSession, ServerConnectionError
+from aiohttp import ServerConnectionError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -16,6 +14,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_call_later, async_track_point_in_time
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 import homeassistant.util.dt as dt_util
+from lib.data_downloader import DataDownloader
 
 from .const import (
     CONF_ACTUAL_DATA_ONLY,
@@ -29,8 +28,8 @@ from .const import (
     EVENT_UPDATE_PUN,
     WEB_RETRIES_MINUTES,
 )
-from .interfaces import DEFAULT_ZONA, Fascia, PunData, PunValues, Zona
-from .utils import extract_xml, get_fascia, get_hour_datetime, get_next_date
+from lib.interfaces import DEFAULT_ZONA, Fascia, PunData, Zona
+from lib.utils import get_fascia, get_hour_datetime, get_next_date
 
 # Ottiene il logger
 _LOGGER = logging.getLogger(__name__)
@@ -42,7 +41,7 @@ tz_pun = ZoneInfo("Europe/Rome")
 class PUNDataUpdateCoordinator(DataUpdateCoordinator):
     """Classe coordinator di aggiornamento dati."""
 
-    session: ClientSession
+    data_downloader: DataDownloader
 
     def __init__(self, hass: HomeAssistant, config: ConfigEntry) -> None:
         """Gestione dell'aggiornamento da Home Assistant."""
@@ -54,8 +53,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Nessun update_interval (aggiornamento automatico disattivato)
         )
 
-        # Salva la sessione client e la configurazione
-        self.session = async_get_clientsession(hass)
+        # Create the data download instance
+        self.data_downloader = DataDownloader(_LOGGER, async_get_clientsession(hass))
 
         # Inizializza i valori di configurazione (dalle opzioni o dalla configurazione iniziale)
         self.actual_data_only = config.options.get(
@@ -126,7 +125,6 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Inizializza i valori di default
         self.web_retries = WEB_RETRIES_MINUTES
         self.schedule_token = None
-        self.pun_values: PunValues = PunValues()
         self.fascia_corrente: Fascia | None = None
         self.fascia_successiva: Fascia | None = None
         self.prossimo_cambio_fascia: datetime | None = None
@@ -137,6 +135,10 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             "Coordinator inizializzato (con 'usa dati reali' = %s).",
             self.actual_data_only,
         )
+
+    @property
+    def pun_values(self):
+        return self.data_downloader.pun_values
 
     def clean_tokens(self):
         """Annulla eventuali schedulazioni attive."""
@@ -176,120 +178,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         """Aggiornamento dati a intervalli prestabiliti."""
-
-        # Calcola l'intervallo di date per il mese corrente
-        date_end = dt_util.now().date()
-        date_start = date(date_end.year, date_end.month, 1)
-
-        # All'inizio del mese, aggiunge i valori del mese precedente
-        # a meno che CONF_ACTUAL_DATA_ONLY non sia impostato
-        if (not self.actual_data_only) and (date_end.day < 4):
-            date_start = date_start - timedelta(days=3)
-
-        # Aggiunge un giorno (domani) per il calcolo del prezzo zonale
-        date_end += timedelta(days=1)
-
-        # Converte le date in stringa da passare all'API Mercato elettrico
-        start_date_param = date_start.strftime("%Y%m%d")
-        end_date_param = date_end.strftime("%Y%m%d")
-
-        # URL del sito Mercato elettrico
-        download_url = f"https://gme.mercatoelettrico.org/DesktopModules/GmeDownload/API/ExcelDownload/downloadzipfile?DataInizio={start_date_param}&DataFine={end_date_param}&Date={end_date_param}&Mercato=MGP&Settore=Prezzi&FiltroDate=InizioFine"
-
-        # Imposta gli header della richiesta
-        heads = {
-            "moduleid": "12103",
-            "referer": "https://gme.mercatoelettrico.org/en-us/Home/Results/Electricity/MGP/Download?valore=Prezzi",
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": "Windows",
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-origin",
-            "sec-gpc": "1",
-            "tabid": "1749",
-            "userid": "-1",
-        }
-
-        # Effettua il download dello ZIP con i file XML
-        _LOGGER.debug("Inizio download file ZIP con XML.")
-        async with self.session.get(download_url, headers=heads) as response:
-            # Aspetta la request
-            bytes_response = await response.read()
-
-            # Se la richiesta NON e' andata a buon fine ritorna l'errore subito
-            if response.status != 200:
-                _LOGGER.error("Richiesta fallita con errore %s", response.status)
-                raise ServerConnectionError(
-                    f"Richiesta fallita con errore {response.status}"
-                )
-
-            # La richiesta e' andata a buon fine, tenta l'estrazione
-            try:
-                archive = zipfile.ZipFile(io.BytesIO(bytes_response), "r")
-
-            # Ritorna error se l'output non è uno ZIP, o ha un errore IO
-            except (zipfile.BadZipfile, OSError) as e:  # not a zip:
-                _LOGGER.error(
-                    "Download fallito con URL: %s, lunghezza %s, risposta %s",
-                    download_url,
-                    response.content_length,
-                    response.status,
-                )
-                raise UpdateFailed("Archivio ZIP scaricato dal sito non valido.") from e
-
-        # Mostra i file nell'archivio
-        _LOGGER.debug(
-            "%s file trovati nell'archivio (%s)",
-            len(archive.namelist()),
-            ", ".join(str(fn) for fn in archive.namelist()),
-        )
-
-        # Estrae i dati dall'archivio
-        self.pun_data = extract_xml(
-            archive, self.pun_data, dt_util.now(time_zone=tz_pun).date()
-        )
-        archive.close()
-
-        # Per ogni fascia, calcola il valore del pun
-        for fascia, value_list in self.pun_data.pun.items():
-            # Se abbiamo valori nella fascia
-            if len(value_list) > 0:
-                # Calcola la media dei pun e aggiorna il valore del pun attuale
-                # per la fascia corrispondente
-                self.pun_values.value[fascia] = mean(self.pun_data.pun[fascia])
-            else:
-                # Skippiamo i dict se vuoti
-                pass
-
-        # Calcola la fascia F23 (a partire da F2 ed F3)
-        # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:
-        # https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806
-        if (
-            len(self.pun_data.pun[Fascia.F2]) and len(self.pun_data.pun[Fascia.F3])
-        ) > 0:
-            self.pun_values.value[Fascia.F23] = (
-                0.46 * self.pun_values.value[Fascia.F2]
-                + 0.54 * self.pun_values.value[Fascia.F3]
-            )
-        else:
-            self.pun_values.value[Fascia.F23] = 0
-
-        # Logga i dati
-        _LOGGER.debug(
-            "Numero di dati: %s",
-            ", ".join(
-                str(f"{len(dati)} ({fascia.value})")
-                for fascia, dati in self.pun_data.pun.items()
-                if fascia != Fascia.F23
-            ),
-        )
-        _LOGGER.debug(
-            "Valori PUN: %s",
-            ", ".join(
-                f"{prezzo} ({fascia.value})"
-                for fascia, prezzo in self.pun_values.value.items()
-            ),
-        )
+        self.data_downloader.get(tz_pun, self.actual_data_only)
 
         # Notifica che i dati PUN (prezzi) sono stati aggiornati
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
