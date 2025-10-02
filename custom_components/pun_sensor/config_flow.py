@@ -32,7 +32,7 @@ class PUNOptionsFlow(config_entries.OptionsFlow):
         """Inizializzazione opzioni."""
         if AwesomeVersion(HA_VERSION) < AwesomeVersion("2024.12.0b0"):
             self.config_entry = entry
-
+            
     async def async_step_init(self, user_input=None) -> FlowResult:
         """Gestisce le opzioni di configurazione."""
         errors: dict[str, str] | None = {}
