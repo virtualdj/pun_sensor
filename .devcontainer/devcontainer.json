@@ -1,6 +1,6 @@
 {
   "name": "Home Assistant Integration Dev",
-  "image": "mcr.microsoft.com/devcontainers/python:3.13",
+  "image": "mcr.microsoft.com/devcontainers/python:3.13-bookworm",
   "postCreateCommand": ".devcontainer/scripts/setup",
   "containerEnv": {
     "PYTHONASYNCIODEBUG": "1"
