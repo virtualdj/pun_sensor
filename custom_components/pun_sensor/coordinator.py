@@ -124,7 +124,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.update_scan_minutes_from_config(hass=hass, config=config, new_minute=False)
 
         # Inizializza i valori di default
-        self.web_retries = WEB_RETRIES_MINUTES
+        self.web_retries = WEB_RETRIES_MINUTES.copy()
         self.schedule_token = None
         self.pun_values: PunValues = PunValues()
         self.fascia_corrente: Fascia | None = None
@@ -340,7 +340,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
             # Se non ci sono eccezioni, ha avuto successo
             # Ricarica i tentativi per la prossima esecuzione
-            self.web_retries = WEB_RETRIES_MINUTES
+            self.web_retries = WEB_RETRIES_MINUTES.copy()
 
         # Errore nel fetch dei dati se la response non e' 200
         # pylint: disable=broad-exception-caught
