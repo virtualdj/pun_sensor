@@ -168,8 +168,6 @@ def get_hour_datetime(dataora: datetime) -> datetime:
 def get_ordinal_hour(dt: datetime, ref_tz: ZoneInfo = ZoneInfo("Europe/Rome")) -> int:
     """Restituisce un numero progressivo dell'ora (1-24 normalmente, 1-23 in primavera, 1-25 in autunno), contando le ore locali effettive trascorse dalla mezzanotte.
 
-    Al momento questa funzione non è utilizzata nel codice, ma può essere utile in futuro.
-
     Args:
         dt: datetime con timezone di cui restituire l'ora progressiva
         ref_tz: timezone di riferimento per il calcolo (di default usa "Europe/Rome")
