@@ -29,8 +29,8 @@ from .const import (
     EVENT_UPDATE_PUN,
     WEB_RETRIES_MINUTES,
 )
-from .interfaces import DEFAULT_ZONA, Fascia, PunData, PunValues, Zona
-from .utils import extract_xml, get_fascia, get_hour_datetime, get_next_date
+from .interfaces import DEFAULT_ZONA, Fascia, PunData, PunValues, PunDataMP, PunValuesMP, Zona
+from .utils import extract_xml, extract_xml2, get_fascia, get_hour_datetime, get_next_date
 
 # Ottiene il logger
 _LOGGER = logging.getLogger(__name__)
@@ -67,6 +67,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # Inizializza i dati PUN e la zona geografica
         self.pun_data: PunData = PunData()
+        # Inizializza i dati PUN e la zona geografica
+        self.pun_data_mp: PunDataMP = PunDataMP()
         try:
             # Estrae il valore dalla configurazione come stringa
             zona_string = config.options.get(
@@ -76,6 +78,15 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Tenta di associare la stringa all'enum
             # (per verificare che sia corretta)
             self.pun_data.zona = Zona[zona_string]
+
+            # Estrae il valore dalla configurazione come stringa
+            zona_string = config.options.get(
+                CONF_ZONA, config.data.get(CONF_ZONA, DEFAULT_ZONA)
+            )
+
+            # Tenta di associare la stringa all'enum
+            # (per verificare che sia corretta)
+            self.pun_data_mp.zona = Zona[zona_string]
 
         except KeyError:
             # La zona non è valida
@@ -88,6 +99,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Aggiorna la configurazione salvata con la zona di default
             # (per la prossima esecuzione)
             self.pun_data.zona = DEFAULT_ZONA
+            self.pun_data_mp.zona = DEFAULT_ZONA
 
             @callback
             async def async_restore_default_zona() -> None:
@@ -127,6 +139,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.web_retries = WEB_RETRIES_MINUTES.copy()
         self.schedule_token = None
         self.pun_values: PunValues = PunValues()
+        self.pun_values_mp: PunValuesMP = PunValuesMP()        
         self.fascia_corrente: Fascia | None = None
         self.fascia_successiva: Fascia | None = None
         self.prossimo_cambio_fascia: datetime | None = None
@@ -174,20 +187,26 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Carica i minuti dalla configurazione
             self.scan_minute = config.data.get(CONF_SCAN_MINUTE, 0)
 
-    async def _async_update_data(self):
+    async def _async_update_data(self, mp):
         """Aggiornamento dati a intervalli prestabiliti."""
 
         # Calcola l'intervallo di date per il mese corrente
-        date_end = dt_util.now().date()
-        date_start = date(date_end.year, date_end.month, 1)
+        if mp=="N":
+            # Calcola l'intervallo di date per il mese corrente
+            date_end = dt_util.now().date()
+            date_start = date(date_end.year, date_end.month, 1)
+        else:
+            date_end = dt_util.now().date().replace(day=1) - timedelta(days=1)
+            date_start = date(date_end.year, date_end.month, 1)
 
         # All'inizio del mese, aggiunge i valori del mese precedente
         # a meno che CONF_ACTUAL_DATA_ONLY non sia impostato
-        if (not self.actual_data_only) and (date_end.day < 4):
+        if (not self.actual_data_only) and (date_end.day < 4) and mp=="N":
             date_start = date_start - timedelta(days=3)
-
+            
         # Aggiunge un giorno (domani) per il calcolo del prezzo zonale
-        date_end += timedelta(days=1)
+        if mp=="N":
+            date_end += timedelta(days=1)
 
         # Converte le date in stringa da passare all'API Mercato elettrico
         start_date_param = date_start.strftime("%Y%m%d")
@@ -244,55 +263,102 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             ", ".join(str(fn) for fn in archive.namelist()),
         )
 
-        # Estrae i dati dall'archivio
-        self.pun_data = extract_xml(
-            archive, self.pun_data, dt_util.now(time_zone=tz_pun).date()
-        )
-        archive.close()
-
-        # Per ogni fascia, calcola il valore del pun
-        for fascia, value_list in self.pun_data.pun.items():
-            # Se abbiamo valori nella fascia
-            if len(value_list) > 0:
-                # Calcola la media dei pun e aggiorna il valore del pun attuale
-                # per la fascia corrispondente
-                self.pun_values.value[fascia] = mean(self.pun_data.pun[fascia])
-            else:
-                # Skippiamo i dict se vuoti
-                pass
-
-        # Calcola la fascia F23 (a partire da F2 ed F3)
-        # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:
-        # https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806
-        if (
-            len(self.pun_data.pun[Fascia.F2]) and len(self.pun_data.pun[Fascia.F3])
-        ) > 0:
-            self.pun_values.value[Fascia.F23] = (
-                0.46 * self.pun_values.value[Fascia.F2]
-                + 0.54 * self.pun_values.value[Fascia.F3]
+        if mp == "N":
+            # Estrae i dati dall'archivio
+            self.pun_data = extract_xml(
+                archive, self.pun_data, dt_util.now(time_zone=tz_pun).date()
             )
+            archive.close()
+
+            # Per ogni fascia, calcola il valore del pun
+            for fascia, value_list in self.pun_data.pun.items():
+                # Se abbiamo valori nella fascia
+                if len(value_list) > 0:
+                    # Calcola la media dei pun e aggiorna il valore del pun attuale
+                    # per la fascia corrispondente
+                    self.pun_values.value[fascia] = mean(self.pun_data.pun[fascia])
+                else:
+                    # Skippiamo i dict se vuoti
+                    pass
+
+            # Calcola la fascia F23 (a partire da F2 ed F3)
+            # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:
+            # https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806
+            if (
+                len(self.pun_data.pun[Fascia.F2]) and len(self.pun_data.pun[Fascia.F3])
+            ) > 0:
+                self.pun_values.value[Fascia.F23] = (
+                    0.46 * self.pun_values.value[Fascia.F2]
+                    + 0.54 * self.pun_values.value[Fascia.F3]
+                )
+            else:
+                self.pun_values.value[Fascia.F23] = 0
+
+            # Logga i dati
+            _LOGGER.debug(
+                "Numero di dati: %s",
+                ", ".join(
+                    str(f"{len(dati)} ({fascia.value})")
+                    for fascia, dati in self.pun_data.pun.items()
+                    if fascia != Fascia.F23
+                ),
+            )
+            _LOGGER.debug(
+                "Valori PUN: %s",
+                ", ".join(
+                    f"{prezzo} ({fascia.value})"
+                    for fascia, prezzo in self.pun_values.value.items()
+                ),
+            )
+
+            # Notifica che i dati PUN (prezzi) sono stati aggiornati
+            self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
         else:
-            self.pun_values.value[Fascia.F23] = 0
+            # Estrae i dati dall'archivio
+            self.pun_data_mp = extract_xml2(archive, self.pun_data_mp, dt_util.now(time_zone=tz_pun).date())
 
-        # Logga i dati
-        _LOGGER.debug(
-            "Numero di dati: %s",
-            ", ".join(
-                str(f"{len(dati)} ({fascia.value})")
-                for fascia, dati in self.pun_data.pun.items()
-                if fascia != Fascia.F23
-            ),
-        )
-        _LOGGER.debug(
-            "Valori PUN: %s",
-            ", ".join(
-                f"{prezzo} ({fascia.value})"
-                for fascia, prezzo in self.pun_values.value.items()
-            ),
-        )
+            # Per ogni fascia, calcola il valore del pun
+            for fascia, value_list in self.pun_data_mp.pun.items():
+                # Se abbiamo valori nella fascia
+                if len(value_list) > 0:
+                    # Calcola la media dei pun e aggiorna il valore del pun attuale
+                    # per la fascia corrispondente
+                    self.pun_values_mp.value[fascia] = mean(self.pun_data_mp.pun[fascia])
+                else:
+                    # Skippiamo i dict se vuoti
+                    pass
 
-        # Notifica che i dati PUN (prezzi) sono stati aggiornati
-        self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
+            # Calcola la fascia F23 (a partire da F2 ed F3)
+            # NOTA: la motivazione del calcolo è oscura ma sembra corretta; vedere:
+            # https://github.com/virtualdj/pun_sensor/issues/24#issuecomment-1829846806
+            if (
+                len(self.pun_data_mp.pun[Fascia.F2_MP]) and len(self.pun_data_mp.pun[Fascia.F3_MP])
+            ) > 0:
+                self.pun_values_mp.value[Fascia.F23_MP] = (
+                    0.46 * self.pun_values_mp.value[Fascia.F2_MP]
+                    + 0.54 * self.pun_values_mp.value[Fascia.F3_MP]
+                )
+            else:
+                self.pun_values_mp.value[Fascia.F23_MP] = 0
+
+            # Logga i dati
+            _LOGGER.debug(
+                "Numero di dati: %s",
+                ", ".join(
+                    str(f"{len(dati)} ({fascia.value})")
+                    for fascia, dati in self.pun_data_mp.pun.items()
+                    if fascia != Fascia.F23_MP
+                ),
+            )
+            _LOGGER.debug(
+                "Valori PUN: %s",
+                ", ".join(
+                    f"{prezzo} ({fascia.value})"
+                    for fascia, prezzo in self.pun_values_mp.value.items()
+                ),
+            )
+            # Notifica che i dati PUN (prezzi) sono stati aggiornati
+            self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
 
     async def update_fascia(self, now=None):
         """Aggiorna la fascia oraria corrente (al cambio fascia)."""
@@ -336,7 +402,8 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Aggiorna i dati da web
         try:
             # Esegue l'aggiornamento
-            await self._async_update_data()
+            await self._async_update_data("N")
+            await self._async_update_data("Y")
 
             # Se non ci sono eccezioni, ha avuto successo
             # Ricarica i tentativi per la prossima esecuzione
