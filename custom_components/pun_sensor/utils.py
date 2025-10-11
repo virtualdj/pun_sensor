@@ -1,8 +1,9 @@
 """Metodi di utilità generale."""
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 import logging
 from zipfile import ZipFile
+from zoneinfo import ZoneInfo
 
 import defusedxml.ElementTree as et  # type: ignore[import-untyped]
 import holidays
@@ -160,20 +161,174 @@ def get_hour_datetime(dataora: datetime) -> datetime:
         minute=0,
         second=0,
         microsecond=0,
+        tzinfo=dataora.tzinfo,
     )
 
 
-def datetime_to_packed_string(dataora: datetime) -> str:
-    """Restituisce una stringa usabile come chiave dizionario a partire da un datime.
+def get_ordinal_hour(dt: datetime, ref_tz: ZoneInfo = ZoneInfo("Europe/Rome")) -> int:
+    """Restituisce un numero progressivo dell'ora (1-24 normalmente, 1-23 in primavera, 1-25 in autunno), contando le ore locali effettive trascorse dalla mezzanotte.
+
+    Al momento questa funzione non è utilizzata nel codice, ma può essere utile in futuro.
 
     Args:
-    dataora (datetime): Data e ora di partenza.
+        dt: datetime con timezone di cui restituire l'ora progressiva
+        ref_tz: timezone di riferimento per il calcolo (di default usa "Europe/Rome")
 
     Returns:
-        str: Stringa in formato YYYYMMDDHH.
+        int: numero progressivo dell'ora nel giorno da 1 a 24 (oppure 23/25 nei giorni di cambio ora)
+
+    Raises:
+        ValueError: se dt non ha timezone
+
+    Example:
+        >>> get_ordinal_hour(datetime(2025, 10, 26, 23, 59, 0, 0, ZoneInfo("Europe/Rome")))
+        25
+
+        >>> get_ordinal_hour(datetime(2026, 3, 29, 23, 59, 0, 0, ZoneInfo("Europe/Rome")))
+        23
 
     """
-    return dataora.strftime("%Y%m%d%H")
+    # Controllo presenza fuso orario negli argomenti
+    if dt.tzinfo is None:
+        raise ValueError(
+            "L'argomento dt deve essere timezone-aware (es. ZoneInfo('Europe/Rome'))."
+        )
+
+    # Calcola la mezzanotte locale
+    local_midnight = datetime(dt.year, dt.month, dt.day, 0, 0, tzinfo=ref_tz)
+
+    # Converte la mezzanotte in UTC
+    start_utc = local_midnight.astimezone(timezone.utc)
+
+    # Converte l'ora passata in UTC
+    dt_utc = dt.astimezone(timezone.utc)
+
+    # Calcola il numero di ore passate dal mezzanotte in UTC e somma 1
+    return int((dt_utc - start_utc).total_seconds() // 3600) + 1
+
+
+def get_total_hours(
+    dt: datetime | date, ref_tz: ZoneInfo = ZoneInfo("Europe/Rome")
+) -> int:
+    """Restituisce il numero totale di ore locali (24 normalmente, 23 in primavera, 25 in autunno) del giorno specificato da `dt`.
+
+    Args:
+        dt: datetime o date di cui restituire il numero massimo di ore progressive
+        ref_tz: timezone di riferimento per il calcolo (di default usa "Europe/Rome")
+
+    Returns:
+        int: ore totali del giorno (23, 24 oppure 25)
+
+    Raises:
+        TypeError: se dt non è né un datetime né una date
+        ValueError: se dt è un datetime senza timezone
+
+    Example:
+        >>> get_total_hours(datetime(2025, 10, 26, ZoneInfo("Europe/Rome")))
+        25
+
+        >>> get_total_hours(datetime(2026, 3, 29, ZoneInfo("Europe/Rome")))
+        23
+
+    """
+    # Verifica se dt è un date
+    if type(dt) is date:
+        # Converte la date in datetime alle 23 per la timezone di riferimento e restituisce l'ora progressiva
+        return get_ordinal_hour(
+            datetime(
+                year=dt.year,
+                month=dt.month,
+                day=dt.day,
+                hour=23,
+                minute=0,
+                second=0,
+                microsecond=0,
+                tzinfo=ref_tz,
+            ),
+            ref_tz,
+        )
+
+    # Verifica se dt è un datetime
+    if type(dt) is datetime:
+        # Se è un datetime (con o senza timezone verrà verificato a valle), resetta l'orario alle 23 e restituisce l'ora progressiva
+        return get_ordinal_hour(
+            dt.replace(hour=23, minute=0, second=0, microsecond=0), ref_tz
+        )
+
+    # Altrimenti solleva un'eccezione
+    raise TypeError("L'argomento dt deve essere datetime o date.")
+
+
+def add_timedelta_via_utc(
+    dt: datetime,
+    delta: timedelta | None = None,
+    days: int = 0,
+    hours: int = 0,
+    minutes: int = 0,
+    ref_tz: ZoneInfo = ZoneInfo("Europe/Rome"),
+) -> datetime:
+    """Aggiunge un timedelta ad un orario considerando il calcolo in UTC.
+
+    Args:
+        dt: datetime con timezone su cui operare
+        delta: timedelta da aggiungere
+        days: giorni da aggiungere (se delta è None)
+        hours: ore da aggiungere (se delta è None)
+        minutes: minuti da aggiungere (se delta è None)
+        ref_tz: timezone di riferimento per il calcolo (di default usa "Europe/Rome")
+
+    Returns:
+        datetime: orario aggiornato
+
+    Raises:
+        ValueError: se dt non ha timezone
+
+    """
+    # Controllo presenza fuso orario negli argomenti
+    if dt.tzinfo is None:
+        raise ValueError(
+            "L'argomento dt deve essere timezone-aware (es. ZoneInfo('Europe/Rome'))."
+        )
+
+    # Controllo timedelta
+    if delta is None:
+        delta = timedelta(days=days, hours=hours, minutes=minutes)
+
+    # Aggiunge il delta in UTC (per considerare anche i cambiamenti ora solare/legale)
+    return (dt.astimezone(timezone.utc) + delta).astimezone(ref_tz)
+
+
+def get_datetime_from_ordinal_hour(
+    dt: datetime | date, ordinal_hour: int, ref_tz: ZoneInfo = ZoneInfo("Europe/Rome")
+) -> datetime:
+    """Restituisce il datetime corrispondente all'ora progressiva `ordinal_hour` del giorno `data`.
+
+    Args:
+        dt: datetime o date di riferimento
+        ordinal_hour: l'ora progressiva del giorno `dt` da convertire (1..25)
+        ref_tz: timezone di riferimento per il calcolo (di default usa "Europe/Rome")
+
+    Raises:
+        ValueError: se ordinal_hour non è compreso tra 1 e 25
+
+    Returns:
+        datetime: orario locale corrispondente all'ora progressiva specificata
+
+    """
+    if not (1 <= ordinal_hour <= 25):
+        raise ValueError("ordinal_hour deve essere compreso tra 1 e 25")
+
+    # Calcola la mezzanotte locale
+    local_midnight = datetime(dt.year, dt.month, dt.day, 0, 0, tzinfo=ref_tz)
+
+    # Converte la mezzanotte in UTC
+    start_utc = local_midnight.astimezone(timezone.utc)
+
+    # Aggiunge le ore locali effettive trascorse dalla mezzanotte
+    end_utc = start_utc + timedelta(hours=ordinal_hour - 1)
+
+    # Ritorna l'orario locale corrispondente
+    return end_utc.astimezone(ref_tz)
 
 
 def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
@@ -217,13 +372,29 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
             int(dat_string[6:8]),
         )
 
+        # Ottiene il numero massimo di ora per la data specificata
+        max_ore = get_total_hours(dat_date)
+
         # Verifica la festività
         festivo = dat_date in it_holidays
 
         # Estrae le rimanenti informazioni
         for prezzi in xml_root.iter("Prezzi"):
             # Estrae l'ora dall'XML
-            ora = int(prezzi.find("Ora").text) - 1  # 1..24
+            ora_xml = int(prezzi.find("Ora").text)
+
+            # Valida l'orario XML
+            # 1..24 normalmente, ma anche 1..23 o 1..25 nei cambi ora
+            if not (1 <= ora_xml <= max_ore):
+                _LOGGER.warning(
+                    "Orario %s non valido per %s (max: %s).",
+                    ora_xml,
+                    dat_string,
+                    max_ore,
+                )
+
+            # Converte l'ora in un datetime
+            orario_prezzo = get_datetime_from_ordinal_hour(dat_date, ora_xml)
 
             # Estrae il prezzo PUN dall'XML in un float
             if (prezzo_xml := prezzi.find("PUN")) is not None:
@@ -233,7 +404,7 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                 # Per le medie mensili, considera solo i dati fino ad oggi
                 if dat_date <= today:
                     # Estrae la fascia oraria
-                    fascia = get_fascia_for_xml(dat_date, festivo, ora)
+                    fascia = get_fascia_for_xml(dat_date, festivo, orario_prezzo.hour)
 
                     # Calcola le statistiche
                     pun_data.pun[Fascia.MONO].append(prezzo)
@@ -241,41 +412,16 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
 
                 # Per il PUN orario, considera solo oggi e domani
                 if dat_date >= today:
-                    # Compone l'orario
-                    orario_prezzo = datetime_to_packed_string(
-                        datetime(
-                            year=dat_date.year,
-                            month=dat_date.month,
-                            day=dat_date.day,
-                            hour=ora,
-                            minute=0,
-                            second=0,
-                            microsecond=0,
-                        )
-                    )
-                    # E salva il prezzo per quell'orario
-                    pun_data.pun_orari[orario_prezzo] = prezzo
+                    # Salva il prezzo per quell'orario
+                    pun_data.pun_orari[str(orario_prezzo)] = prezzo
             else:
                 # PUN non valido
                 _LOGGER.warning(
-                    "PUN non specificato per %s ad orario: %s.", dat_string, ora
+                    "PUN non specificato per %s ad orario: %s.", dat_string, ora_xml
                 )
 
             # Per i prezzi zonali, considera solo oggi e domani
             if dat_date >= today:
-                # Compone l'orario
-                orario_prezzo = datetime_to_packed_string(
-                    datetime(
-                        year=dat_date.year,
-                        month=dat_date.month,
-                        day=dat_date.day,
-                        hour=ora,
-                        minute=0,
-                        second=0,
-                        microsecond=0,
-                    )
-                )
-
                 # Controlla che la zona del prezzo zonale sia impostata
                 if pun_data.zona is not None:
                     # Estrae il prezzo zonale dall'XML in un float
@@ -286,10 +432,10 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                         prezzo_zonale_string = prezzo_zonale_xml.text.replace(
                             ".", ""
                         ).replace(",", ".")
-                        pun_data.prezzi_zonali[orario_prezzo] = (
+                        pun_data.prezzi_zonali[str(orario_prezzo)] = (
                             float(prezzo_zonale_string) / 1000
                         )
                     else:
-                        pun_data.prezzi_zonali[orario_prezzo] = None
+                        pun_data.prezzi_zonali[str(orario_prezzo)] = None
 
     return pun_data
