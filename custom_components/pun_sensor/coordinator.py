@@ -425,7 +425,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Schedula la prossima esecuzione all'ora successiva
         # (tenendo conto del cambio ora legale/solare)
         next_update_prezzo_zonale = add_timedelta_via_utc(
-            dt_util.now(time_zone=tz_pun), hours=1
+            dt=dt_util.now(time_zone=tz_pun), hours=1
         ).replace(minute=0, second=0, microsecond=0)
         async_track_point_in_time(
             self.hass, self.update_prezzo_zonale, next_update_prezzo_zonale
