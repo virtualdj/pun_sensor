@@ -32,10 +32,11 @@ from .const import (
     EVENT_UPDATE_PUN,
 )
 from .interfaces import Fascia, PunValues
-from .utils import datetime_to_packed_string, get_next_date
-
-ATTR_PREFIX_PREZZO_OGGI = "oggi_h_"
-ATTR_PREFIX_PREZZO_DOMANI = "domani_h_"
+from .utils import (
+    add_timedelta_via_utc,
+    get_datetime_from_ordinal_hour,
+    get_total_hours,
+)
 
 # Ottiene il logger
 _LOGGER = logging.getLogger(__name__)
@@ -434,14 +435,11 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         if coordinator_event in (EVENT_UPDATE_PUN, EVENT_UPDATE_PREZZO_ZONALE):
             if self.coordinator.pun_data.zona is not None:
                 # Controlla se il prezzo orario esiste per l'ora corrente
-                if (
-                    datetime_to_packed_string(self.coordinator.orario_prezzo)
-                    in self._prezzi_zonali
-                ):
+                if str(self.coordinator.orario_prezzo) in self._prezzi_zonali:
                     # Aggiorna il valore al prezzo orario
                     if (
                         valore := self._prezzi_zonali[
-                            datetime_to_packed_string(self.coordinator.orario_prezzo)
+                            str(self.coordinator.orario_prezzo)
                         ]
                     ) is not None:
                         self._native_value = valore
@@ -514,14 +512,11 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
                 self._prezzi_zonali = old_prezzi_zonali
 
                 # Controlla se il prezzo orario esiste per l'ora corrente
-                if (
-                    datetime_to_packed_string(self.coordinator.orario_prezzo)
-                    in self._prezzi_zonali
-                ):
+                if str(self.coordinator.orario_prezzo) in self._prezzi_zonali:
                     # Aggiorna il valore al prezzo orario
                     if (
                         valore := self._prezzi_zonali[
-                            datetime_to_packed_string(self.coordinator.orario_prezzo)
+                            str(self.coordinator.orario_prezzo)
                         ]
                     ) is not None:
                         self._native_value = valore
@@ -572,22 +567,23 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 
         # Aggiunge i prezzi orari negli attributi, ora per ora
         if self.coordinator.pun_data.zona is not None:
-            for h in range(24):
-                # Prezzi di oggi
-                data_oggi = get_next_date(
-                    dataora=self.coordinator.orario_prezzo, ora=h, offset=0
+            # Prezzi di oggi
+            max_ore_oggi: int = get_total_hours(self.coordinator.orario_prezzo)
+            for h in range(max_ore_oggi):
+                data_ora_prezzo = get_datetime_from_ordinal_hour(
+                    self.coordinator.orario_prezzo, (1 + h)
                 )
-                attributes[ATTR_PREFIX_PREZZO_OGGI + f"{h:02d}"] = (
-                    self._prezzi_zonali.get(datetime_to_packed_string(data_oggi))
+                attributes[str(data_ora_prezzo)] = self._prezzi_zonali.get(
+                    str(data_ora_prezzo)
                 )
 
-            for h in range(24):
-                # Prezzi di domani
-                data_domani = get_next_date(
-                    dataora=self.coordinator.orario_prezzo, ora=h, offset=1
-                )
-                attributes[ATTR_PREFIX_PREZZO_DOMANI + f"{h:02d}"] = (
-                    self._prezzi_zonali.get(datetime_to_packed_string(data_domani))
+            # Prezzi di domani
+            domani = add_timedelta_via_utc(dt=self.coordinator.orario_prezzo, days=1)
+            max_ore_domani: int = get_total_hours(domani)
+            for h in range(max_ore_domani):
+                data_ora_prezzo = get_datetime_from_ordinal_hour(domani, (1 + h))
+                attributes[str(data_ora_prezzo)] = self._prezzi_zonali.get(
+                    str(data_ora_prezzo)
                 )
 
         # Restituisce gli attributi
@@ -636,15 +632,10 @@ class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         # Cambiato l'orario del prezzo
         if coordinator_event in (EVENT_UPDATE_PUN, EVENT_UPDATE_PREZZO_ZONALE):
             # Controlla se il PUN orario esiste per l'ora corrente
-            if (
-                datetime_to_packed_string(self.coordinator.orario_prezzo)
-                in self._pun_orari
-            ):
+            if str(self.coordinator.orario_prezzo) in self._pun_orari:
                 # Aggiorna il valore al prezzo orario
                 if (
-                    valore := self._pun_orari[
-                        datetime_to_packed_string(self.coordinator.orario_prezzo)
-                    ]
+                    valore := self._pun_orari[str(self.coordinator.orario_prezzo)]
                 ) is not None:
                     self._native_value = valore
                     self._available = True
@@ -683,15 +674,10 @@ class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
                 self._pun_orari = old_pun_orari
 
                 # Controlla se il prezzo orario esiste per l'ora corrente
-                if (
-                    datetime_to_packed_string(self.coordinator.orario_prezzo)
-                    in self._pun_orari
-                ):
+                if str(self.coordinator.orario_prezzo) in self._pun_orari:
                     # Aggiorna il valore al prezzo orario
                     if (
-                        valore := self._pun_orari[
-                            datetime_to_packed_string(self.coordinator.orario_prezzo)
-                        ]
+                        valore := self._pun_orari[str(self.coordinator.orario_prezzo)]
                     ) is not None:
                         self._native_value = valore
                         self._available = True
@@ -742,23 +728,20 @@ class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         attributes: dict[str, Any] = {}
 
         # Aggiunge i prezzi orari negli attributi, ora per ora
-        for h in range(24):
-            # Prezzi di oggi
-            data_oggi = get_next_date(
-                dataora=self.coordinator.orario_prezzo, ora=h, offset=0
+        # Prezzi di oggi
+        max_ore_oggi: int = get_total_hours(self.coordinator.orario_prezzo)
+        for h in range(max_ore_oggi):
+            data_ora_prezzo = get_datetime_from_ordinal_hour(
+                self.coordinator.orario_prezzo, (1 + h)
             )
-            attributes[ATTR_PREFIX_PREZZO_OGGI + f"{h:02d}"] = self._pun_orari.get(
-                datetime_to_packed_string(data_oggi)
-            )
+            attributes[str(data_ora_prezzo)] = self._pun_orari.get(str(data_ora_prezzo))
 
-        for h in range(24):
-            # Prezzi di domani
-            data_domani = get_next_date(
-                dataora=self.coordinator.orario_prezzo, ora=h, offset=1
-            )
-            attributes[ATTR_PREFIX_PREZZO_DOMANI + f"{h:02d}"] = self._pun_orari.get(
-                datetime_to_packed_string(data_domani)
-            )
+        # Prezzi di domani
+        domani = add_timedelta_via_utc(dt=self.coordinator.orario_prezzo, days=1)
+        max_ore_domani: int = get_total_hours(domani)
+        for h in range(max_ore_domani):
+            data_ora_prezzo = get_datetime_from_ordinal_hour(domani, (1 + h))
+            attributes[str(data_ora_prezzo)] = self._pun_orari.get(str(data_ora_prezzo))
 
         # Restituisce gli attributi
         return attributes
