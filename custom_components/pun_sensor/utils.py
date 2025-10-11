@@ -258,6 +258,7 @@ def get_total_hours(
 
 
 def add_timedelta_via_utc(
+    *,
     dt: datetime,
     delta: timedelta | None = None,
     days: int = 0,
