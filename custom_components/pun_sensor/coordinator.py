@@ -30,7 +30,13 @@ from .const import (
     WEB_RETRIES_MINUTES,
 )
 from .interfaces import DEFAULT_ZONA, Fascia, PunData, PunValues, Zona
-from .utils import extract_xml, get_fascia, get_hour_datetime, get_next_date
+from .utils import (
+    add_timedelta_via_utc,
+    extract_xml,
+    get_fascia,
+    get_hour_datetime,
+    get_next_date,
+)
 
 # Ottiene il logger
 _LOGGER = logging.getLogger(__name__)
@@ -417,8 +423,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PREZZO_ZONALE})
 
         # Schedula la prossima esecuzione all'ora successiva
-        next_update_prezzo_zonale = (
-            dt_util.now(time_zone=tz_pun) + timedelta(hours=1)
+        # (tenendo conto del cambio ora legale/solare)
+        next_update_prezzo_zonale = add_timedelta_via_utc(
+            dt_util.now(time_zone=tz_pun), hours=1
         ).replace(minute=0, second=0, microsecond=0)
         async_track_point_in_time(
             self.hass, self.update_prezzo_zonale, next_update_prezzo_zonale
