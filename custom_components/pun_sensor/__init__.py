@@ -110,7 +110,7 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
             coordinator.schedule_token = None
 
         # Schedula la prossima esecuzione
-        coordinator.web_retries = WEB_RETRIES_MINUTES
+        coordinator.web_retries = WEB_RETRIES_MINUTES.copy()
         coordinator.schedule_token = async_track_point_in_time(
             coordinator.hass, coordinator.update_pun, next_update_pun
         )
@@ -134,7 +134,7 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
             coordinator.schedule_token = None
 
         # Esegue un nuovo aggiornamento immediatamente
-        coordinator.web_retries = WEB_RETRIES_MINUTES
+        coordinator.web_retries = WEB_RETRIES_MINUTES.copy()
         coordinator.schedule_token = async_call_later(
             coordinator.hass, timedelta(seconds=5), coordinator.update_pun
         )
@@ -169,7 +169,7 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
                 coordinator.schedule_token = None
 
             # Esegue un nuovo aggiornamento immediatamente
-            coordinator.web_retries = WEB_RETRIES_MINUTES
+            coordinator.web_retries = WEB_RETRIES_MINUTES.copy()
             coordinator.schedule_token = async_call_later(
                 coordinator.hass, timedelta(seconds=5), coordinator.update_pun
             )
