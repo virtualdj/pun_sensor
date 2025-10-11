@@ -35,6 +35,7 @@ from .interfaces import Fascia, PunValues
 from .utils import (
     add_timedelta_via_utc,
     get_datetime_from_ordinal_hour,
+    get_ordinal_hour,
     get_total_hours,
 )
 
@@ -435,6 +436,11 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         if coordinator_event in (EVENT_UPDATE_PUN, EVENT_UPDATE_PREZZO_ZONALE):
             if self.coordinator.pun_data.zona is not None:
                 # Controlla se il prezzo orario esiste per l'ora corrente
+                _LOGGER.debug(
+                    "Aggiornamento data prezzo zonale: %s (XML: %s)",
+                    self.coordinator.orario_prezzo,
+                    get_ordinal_hour(self.coordinator.orario_prezzo),
+                )
                 if str(self.coordinator.orario_prezzo) in self._prezzi_zonali:
                     # Aggiorna il valore al prezzo orario
                     if (
@@ -632,6 +638,11 @@ class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         # Cambiato l'orario del prezzo
         if coordinator_event in (EVENT_UPDATE_PUN, EVENT_UPDATE_PREZZO_ZONALE):
             # Controlla se il PUN orario esiste per l'ora corrente
+            _LOGGER.debug(
+                "Aggiornamento data PUN orario: %s (XML: %s)",
+                self.coordinator.orario_prezzo,
+                get_ordinal_hour(self.coordinator.orario_prezzo),
+            )
             if str(self.coordinator.orario_prezzo) in self._pun_orari:
                 # Aggiorna il valore al prezzo orario
                 if (
