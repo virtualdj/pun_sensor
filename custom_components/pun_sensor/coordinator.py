@@ -6,6 +6,7 @@ import io
 import logging
 import random
 from statistics import mean
+from typing import Any
 import zipfile
 from zoneinfo import ZoneInfo
 
@@ -43,7 +44,7 @@ from .utils import (
 _LOGGER = logging.getLogger(__name__)
 
 # Usa sempre il fuso orario italiano (i dati del sito sono per il mercato italiano)
-tz_pun = ZoneInfo("Europe/Rome")
+tz_pun: ZoneInfo = ZoneInfo("Europe/Rome")
 
 
 class PUNDataUpdateCoordinator(DataUpdateCoordinator):
@@ -65,10 +66,10 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.session = async_get_clientsession(hass)
 
         # Inizializza i valori di configurazione (dalle opzioni o dalla configurazione iniziale)
-        self.actual_data_only = config.options.get(
+        self.actual_data_only: bool = config.options.get(
             CONF_ACTUAL_DATA_ONLY, config.data.get(CONF_ACTUAL_DATA_ONLY, False)
         )
-        self.scan_hour = config.options.get(
+        self.scan_hour: int = config.options.get(
             CONF_SCAN_HOUR, config.data.get(CONF_SCAN_HOUR, 1)
         )
 
@@ -76,7 +77,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.pun_data: PunData = PunData()
         try:
             # Estrae il valore dalla configurazione come stringa
-            zona_string = config.options.get(
+            zona_string: str = config.options.get(
                 CONF_ZONA, config.data.get(CONF_ZONA, DEFAULT_ZONA)
             )
 
@@ -127,11 +128,11 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             hass.add_job(async_restore_default_zona)
 
         # Carica il minuto di esecuzione dalla configurazione (o lo crea se non esiste)
-        self.scan_minute = 0
+        self.scan_minute: int = 0
         self.update_scan_minutes_from_config(hass=hass, config=config, new_minute=False)
 
         # Inizializza i valori di default
-        self.web_retries = WEB_RETRIES_MINUTES.copy()
+        self.web_retries: list[int] = WEB_RETRIES_MINUTES.copy()
         self.schedule_token: Callable | None = None
         self.pun_values: PunValues = PunValues()
         self.fascia_corrente: Fascia | None = None
@@ -145,7 +146,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.actual_data_only,
         )
 
-    def clean_tokens(self):
+    def clean_tokens(self) -> None:
         """Annulla eventuali schedulazioni attive."""
         if self.schedule_token is not None:
             self.schedule_token()
@@ -153,7 +154,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
     def update_scan_minutes_from_config(
         self, hass: HomeAssistant, config: ConfigEntry, new_minute: bool = False
-    ):
+    ) -> None:
         """Imposta il minuto di aggiornamento nell'ora configurata.
 
         Determina casualmente in quale minuto eseguire l'aggiornamento web
@@ -181,12 +182,12 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Carica i minuti dalla configurazione
             self.scan_minute = config.data.get(CONF_SCAN_MINUTE, 0)
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> dict[str, Any]:
         """Aggiornamento dati a intervalli prestabiliti."""
 
         # Calcola l'intervallo di date per il mese corrente
-        date_end = dt_util.now().date()
-        date_start = date(date_end.year, date_end.month, 1)
+        date_end: date = dt_util.now().date()
+        date_start: date = date(date_end.year, date_end.month, 1)
 
         # All'inizio del mese, aggiunge i valori del mese precedente
         # a meno che CONF_ACTUAL_DATA_ONLY non sia impostato
@@ -197,14 +198,14 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         date_end += timedelta(days=1)
 
         # Converte le date in stringa da passare all'API Mercato elettrico
-        start_date_param = date_start.strftime("%Y%m%d")
-        end_date_param = date_end.strftime("%Y%m%d")
+        start_date_param: str = date_start.strftime("%Y%m%d")
+        end_date_param: str = date_end.strftime("%Y%m%d")
 
         # URL del sito Mercato elettrico
-        download_url = f"https://gme.mercatoelettrico.org/DesktopModules/GmeDownload/API/ExcelDownload/downloadzipfile?DataInizio={start_date_param}&DataFine={end_date_param}&Date={end_date_param}&Mercato=MGP&Settore=Prezzi&FiltroDate=InizioFine"
+        download_url: str = f"https://gme.mercatoelettrico.org/DesktopModules/GmeDownload/API/ExcelDownload/downloadzipfile?DataInizio={start_date_param}&DataFine={end_date_param}&Date={end_date_param}&Mercato=MGP&Settore=Prezzi&FiltroDate=InizioFine"
 
         # Imposta gli header della richiesta
-        heads = {
+        heads: dict[str, str] = {
             "moduleid": "12103",
             "referer": "https://gme.mercatoelettrico.org/en-us/Home/Results/Electricity/MGP/Download?valore=Prezzi",
             "sec-ch-ua-mobile": "?0",
@@ -300,8 +301,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # Notifica che i dati PUN (prezzi) sono stati aggiornati
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
+        return {}
 
-    async def update_fascia(self, now=None):
+    async def update_fascia(self, now=None) -> None:
         """Aggiorna la fascia oraria corrente (al cambio fascia)."""
 
         # Scrive l'ora corrente (a scopi di debug)
@@ -338,7 +340,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             self.hass, self.update_fascia, self.prossimo_cambio_fascia
         )
 
-    async def update_pun(self, now=None):
+    async def update_pun(self, now=None) -> None:
         """Aggiorna i prezzi PUN da Internet (funziona solo se schedulata)."""
         # Aggiorna i dati da web
         try:
@@ -359,7 +361,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             # Prepara la schedulazione
             if self.web_retries:
                 # Minuti dopo
-                retry_in_minutes = self.web_retries.pop(0)
+                retry_in_minutes: int = self.web_retries.pop(0)
                 _LOGGER.warning(
                     "Errore durante l'aggiornamento dei dati, nuovo tentativo tra %s minut%s.",
                     retry_in_minutes,
@@ -375,7 +377,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                     "Errore durante l'aggiornamento via web, tentativi esauriti.",
                     exc_info=e,
                 )
-                next_update_pun = get_next_date(
+                next_update_pun: datetime = get_next_date(
                     dataora=dt_util.now(time_zone=tz_pun),
                     ora=self.scan_hour,
                     minuto=self.scan_minute,
@@ -414,7 +416,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
             next_update_pun.strftime("%d/%m/%Y %H:%M:%S %z"),
         )
 
-    async def update_prezzo_zonale(self, now=None):
+    async def update_prezzo_zonale(self, now=None) -> None:
         """Aggiorna il prezzo zonale corrente (ogni ora)."""
 
         # Aggiorna il nuovo orario
@@ -425,7 +427,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # Schedula la prossima esecuzione all'ora successiva
         # (tenendo conto del cambio ora legale/solare)
-        next_update_prezzo_zonale = add_timedelta_via_utc(
+        next_update_prezzo_zonale: datetime = add_timedelta_via_utc(
             dt=dt_util.now(time_zone=tz_pun), hours=1
         ).replace(minute=0, second=0, microsecond=0)
         async_track_point_in_time(

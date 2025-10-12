@@ -1,6 +1,6 @@
 """Prezzi PUN del mese."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 import logging
 
 from awesomeversion.awesomeversion import AwesomeVersion
@@ -41,7 +41,7 @@ async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
             await hass.async_add_import_executor_job(country_holidays, "IT")
 
     # Salva il coordinator nella configurazione
-    coordinator = PUNDataUpdateCoordinator(hass, config)
+    coordinator: PUNDataUpdateCoordinator = PUNDataUpdateCoordinator(hass, config)
     hass.data.setdefault(DOMAIN, {})[config.entry_id] = coordinator
 
     # Aggiorna immediatamente la fascia oraria corrente
@@ -67,7 +67,9 @@ async def async_unload_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
     """Rimozione dell'integrazione da Home Assistant."""
 
     # Scarica i sensori (disabilitando di conseguenza il coordinator)
-    unload_ok = await hass.config_entries.async_unload_platforms(config, PLATFORMS)
+    unload_ok: bool = await hass.config_entries.async_unload_platforms(
+        config, PLATFORMS
+    )
     if unload_ok:
         hass.data[DOMAIN].pop(config.entry_id)
 
@@ -78,7 +80,7 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
     """Modificate le opzioni da Home Assistant."""
 
     # Recupera il coordinator
-    coordinator = hass.data[DOMAIN][config.entry_id]
+    coordinator: PUNDataUpdateCoordinator = hass.data[DOMAIN][config.entry_id]
 
     # Aggiorna le impostazioni del coordinator dalle opzioni
     if (CONF_SCAN_HOUR in config.options) and (
@@ -93,8 +95,8 @@ async def update_listener(hass: HomeAssistant, config: ConfigEntry) -> None:
         )
 
         # Calcola la data della prossima esecuzione (all'ora definita)
-        now = dt_util.now()
-        next_update_pun = now.replace(
+        now: datetime = dt_util.now()
+        next_update_pun: datetime = now.replace(
             hour=coordinator.scan_hour,
             minute=coordinator.scan_minute,
             second=0,
