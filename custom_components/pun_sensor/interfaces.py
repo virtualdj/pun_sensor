@@ -17,7 +17,7 @@ class PunData:
             Fascia.F23: [],
         }
 
-        self.zona: Zona | None = None
+        self.zona: Zona = DEFAULT_ZONA
         self.prezzi_zonali: dict[str, float | None] = {}
         self.pun_orari: dict[str, float | None] = {}
 

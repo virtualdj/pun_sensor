@@ -42,7 +42,7 @@ def get_fascia(dataora: datetime) -> tuple[Fascia, datetime]:
     """Restituisce la fascia della data/ora indicata e la data del prossimo cambiamento."""
 
     # Verifica se la data corrente è un giorno con festività
-    festivo = dataora in holidays.IT()  # type: ignore[attr-defined]
+    festivo: bool = dataora in holidays.IT()  # type: ignore[attr-defined]
 
     # Identifica la fascia corrente
     # F1 = lu-ve 8-19
@@ -50,10 +50,10 @@ def get_fascia(dataora: datetime) -> tuple[Fascia, datetime]:
     # F3 = lu-sa 0-7, lu-sa 23-24, do, festivi
     # Festivi
     if festivo:
-        fascia = Fascia.F3
+        fascia: Fascia = Fascia.F3
 
         # Prossima fascia: alle 7 di un giorno non domenica o festività
-        prossima = get_next_date(dataora, 7, 1, True)
+        prossima: datetime = get_next_date(dataora, 7, 1, True)
 
         return fascia, prossima
     match dataora.weekday():
@@ -132,7 +132,7 @@ def get_next_date(
 
     """
 
-    prossima = (dataora + timedelta(days=offset)).replace(
+    prossima: datetime = (dataora + timedelta(days=offset)).replace(
         hour=ora, minute=minuto, second=0, microsecond=0
     )
 
@@ -193,13 +193,13 @@ def get_ordinal_hour(dt: datetime, ref_tz: ZoneInfo = ZoneInfo("Europe/Rome")) -
         )
 
     # Calcola la mezzanotte locale
-    local_midnight = datetime(dt.year, dt.month, dt.day, 0, 0, tzinfo=ref_tz)
+    local_midnight: datetime = datetime(dt.year, dt.month, dt.day, 0, 0, tzinfo=ref_tz)
 
     # Converte la mezzanotte in UTC
-    start_utc = local_midnight.astimezone(timezone.utc)
+    start_utc: datetime = local_midnight.astimezone(timezone.utc)
 
     # Converte l'ora passata in UTC
-    dt_utc = dt.astimezone(timezone.utc)
+    dt_utc: datetime = dt.astimezone(timezone.utc)
 
     # Calcola il numero di ore passate dal mezzanotte in UTC e somma 1
     return int((dt_utc - start_utc).total_seconds() // 3600) + 1
@@ -318,13 +318,13 @@ def get_datetime_from_ordinal_hour(
         raise ValueError("ordinal_hour deve essere compreso tra 1 e 25")
 
     # Calcola la mezzanotte locale
-    local_midnight = datetime(dt.year, dt.month, dt.day, 0, 0, tzinfo=ref_tz)
+    local_midnight: datetime = datetime(dt.year, dt.month, dt.day, 0, 0, tzinfo=ref_tz)
 
     # Converte la mezzanotte in UTC
-    start_utc = local_midnight.astimezone(timezone.utc)
+    start_utc: datetime = local_midnight.astimezone(timezone.utc)
 
     # Aggiunge le ore locali effettive trascorse dalla mezzanotte
-    end_utc = start_utc + timedelta(hours=ordinal_hour - 1)
+    end_utc: datetime = start_utc + timedelta(hours=ordinal_hour - 1)
 
     # Ritorna l'orario locale corrispondente
     return end_utc.astimezone(ref_tz)
@@ -362,25 +362,25 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
             continue
 
         # Estrae la data dal primo elemento (sarà identica per gli altri)
-        dat_string = xml_root.find("Prezzi").find("Data").text  # YYYYMMDD
+        dat_string: str = xml_root.find("Prezzi").find("Data").text  # YYYYMMDD
 
         # Converte la stringa giorno in data
-        dat_date = date(
+        dat_date: date = date(
             int(dat_string[0:4]),
             int(dat_string[4:6]),
             int(dat_string[6:8]),
         )
 
         # Ottiene il numero massimo di ora per la data specificata
-        max_ore = get_total_hours(dat_date)
+        max_ore: int = get_total_hours(dat_date)
 
         # Verifica la festività
-        festivo = dat_date in it_holidays
+        festivo: bool = dat_date in it_holidays
 
         # Estrae le rimanenti informazioni
         for prezzi in xml_root.iter("Prezzi"):
             # Estrae l'ora dall'XML
-            ora_xml = int(prezzi.find("Ora").text)
+            ora_xml: int = int(prezzi.find("Ora").text)
 
             # Valida l'orario XML
             # 1..24 normalmente, ma anche 1..23 o 1..25 nei cambi ora
@@ -393,17 +393,19 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                 )
 
             # Converte l'ora in un datetime
-            orario_prezzo = get_datetime_from_ordinal_hour(dat_date, ora_xml)
+            orario_prezzo: datetime = get_datetime_from_ordinal_hour(dat_date, ora_xml)
 
             # Estrae il prezzo PUN dall'XML in un float
             if (prezzo_xml := prezzi.find("PUN")) is not None:
-                prezzo_string = prezzo_xml.text.replace(".", "").replace(",", ".")
-                prezzo = float(prezzo_string) / 1000
+                prezzo_string: str = prezzo_xml.text.replace(".", "").replace(",", ".")
+                prezzo: float = float(prezzo_string) / 1000
 
                 # Per le medie mensili, considera solo i dati fino ad oggi
                 if dat_date <= today:
                     # Estrae la fascia oraria
-                    fascia = get_fascia_for_xml(dat_date, festivo, orario_prezzo.hour)
+                    fascia: Fascia = get_fascia_for_xml(
+                        dat_date, festivo, orario_prezzo.hour
+                    )
 
                     # Calcola le statistiche
                     pun_data.pun[Fascia.MONO].append(prezzo)
@@ -428,7 +430,7 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                     if (
                         prezzo_zonale_xml := prezzi.find(pun_data.zona.name)
                     ) is not None:
-                        prezzo_zonale_string = prezzo_zonale_xml.text.replace(
+                        prezzo_zonale_string: str = prezzo_zonale_xml.text.replace(
                             ".", ""
                         ).replace(",", ".")
                         pun_data.prezzi_zonali[str(orario_prezzo)] = (
