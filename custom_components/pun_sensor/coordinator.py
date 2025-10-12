@@ -1,5 +1,6 @@
 """Coordinator per pun_sensor."""
 
+from collections.abc import Callable
 from datetime import date, datetime, timedelta
 import io
 import logging
@@ -131,7 +132,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # Inizializza i valori di default
         self.web_retries = WEB_RETRIES_MINUTES.copy()
-        self.schedule_token = None
+        self.schedule_token: Callable | None = None
         self.pun_values: PunValues = PunValues()
         self.fascia_corrente: Fascia | None = None
         self.fascia_successiva: Fascia | None = None

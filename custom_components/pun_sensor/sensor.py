@@ -79,8 +79,8 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         super().__init__(coordinator)
 
         # Inizializza coordinator e tipo
-        self.coordinator = coordinator
-        self.fascia = fascia
+        self.coordinator: PUNDataUpdateCoordinator = coordinator
+        self.fascia: Fascia = fascia
 
         # ID univoco sensore basato su un nome fisso
         match self.fascia:
@@ -102,8 +102,8 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         # Inizializza le proprietà comuni
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_suggested_display_precision = 6
-        self._available = False
-        self._native_value = 0
+        self._available: bool = False
+        self._native_value: float = 0
 
     def _handle_coordinator_update(self) -> None:
         """Gestisce l'aggiornamento dei dati dal coordinator."""
@@ -204,7 +204,7 @@ class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
 
         # Inizializza coordinator
-        self.coordinator = coordinator
+        self.coordinator: PUNDataUpdateCoordinator = coordinator
 
         # ID univoco sensore basato su un nome fisso
         self.entity_id = ENTITY_ID_FORMAT.format("pun_fascia_corrente")
@@ -283,7 +283,7 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
         super().__init__(coordinator)
 
         # Inizializza coordinator
-        self.coordinator = coordinator
+        self.coordinator: PUNDataUpdateCoordinator = coordinator
 
         # ID univoco sensore basato su un nome fisso
         self.entity_id = ENTITY_ID_FORMAT.format("pun_prezzo_fascia_corrente")
@@ -293,9 +293,9 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
         # Inizializza le proprietà comuni
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_suggested_display_precision = 6
-        self._available = False
-        self._native_value = 0
-        self._friendly_name = "Prezzo fascia corrente"
+        self._available: bool = False
+        self._native_value: float = 0
+        self._friendly_name: str = "Prezzo fascia corrente"
 
     def _handle_coordinator_update(self) -> None:
         """Gestisce l'aggiornamento dei dati dal coordinator."""
@@ -389,7 +389,7 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         super().__init__(coordinator)
 
         # Inizializza coordinator e tipo
-        self.coordinator = coordinator
+        self.coordinator: PUNDataUpdateCoordinator = coordinator
 
         # ID univoco sensore basato su un nome fisso
         self.entity_id = ENTITY_ID_FORMAT.format("pun_prezzo_zonale")
@@ -604,7 +604,7 @@ class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         super().__init__(coordinator)
 
         # Inizializza coordinator e tipo
-        self.coordinator = coordinator
+        self.coordinator: PUNDataUpdateCoordinator = coordinator
 
         # ID univoco sensore basato su un nome fisso
         self.entity_id = ENTITY_ID_FORMAT.format("pun_orario")
