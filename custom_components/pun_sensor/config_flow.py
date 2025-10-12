@@ -4,9 +4,9 @@ from awesomeversion.awesomeversion import AwesomeVersion
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 import homeassistant.helpers.config_validation as cv
 
@@ -33,7 +33,7 @@ class PUNOptionsFlow(config_entries.OptionsFlow):
         if AwesomeVersion(HA_VERSION) < AwesomeVersion("2024.12.0b0"):
             self.config_entry = entry
 
-    async def async_step_init(self, user_input=None) -> FlowResult:
+    async def async_step_init(self, user_input=None) -> ConfigFlowResult:
         """Gestisce le opzioni di configurazione."""
         errors: dict[str, str] | None = {}
         if user_input is not None:
