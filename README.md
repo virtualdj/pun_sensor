@@ -68,19 +68,26 @@ Pertanto, seppur questo metodo non sia ufficiale, è stato implementato perché 
 
 ### Prezzo zonale
 
-Oltre al prezzo zonale corrente, negli **attributi** del sensore vengono memorizzati i prezzi scaricati per la giornata di **oggi** (prefisso: `oggi_h_`) e **domani** (prefisso: `domani_h_`), con l'ora a 2 cifre.
+Oltre al prezzo zonale corrente, negli **attributi** del sensore vengono memorizzati i prezzi scaricati per la giornata di **oggi** e **domani** con il nome dell'attributo pari alla data di inizio di validità del prezzo nel formato `YYYY-MM-DD HH:MM:SS+ZZ:ZZ`.
 Di seguito un esempio di come visualizzarli e/o utilizzarli in un template.
 
 ```jinja
-Prezzo zonale
-{% for h in range(24) -%}
-  {%- set prezzo = state_attr("sensor.pun_prezzo_zonale", "oggi_h_" + "%02d" % h) -%}
-  {%- if prezzo is not none -%}
-  Oggi, ore {{ "%02d" % h }} = {{ "%.6f" % prezzo }} €/kWh
+Prezzo zonale di oggi e domani
+{% for orario, prezzo in (states['sensor.pun_prezzo_zonale'].attributes or {}) | dictsort if orario is match('^\\d{4}-\\d{2}-\\d{2}') -%}
+  {# Esempio di formattazione diversa dell'orario #}
+  {%- set orario_dt = orario | as_datetime -%}
+  {{ orario_dt.strftime('%a %d/%m/%Y %H:%M %z') }} = {% if prezzo is not none -%}
+    {{ "%.6f" % prezzo }} €/kWh
   {%- else -%}
-  Oggi, ore {{ "%02d" % h }} = n.d.
+    n.d.
   {%- endif %}
 {% endfor %}
+
+{# Esempio di recupero del prossimo prezzo zonale #}
+{%- set orario_prossimo = (utcnow() + timedelta(hours=1)).astimezone(now().tzinfo).replace(minute=0, second=0, microsecond=0) -%}
+{%- set prezzo_prossimo = state_attr('sensor.pun_prezzo_zonale', orario_prossimo | string) -%}
+Prezzo zonale prossimo = {{ "%.6f" % prezzo_prossimo }} €/kWh
+({{ orario_prossimo }})
 ```
 
 I dati sono visibili anche in _Home Assistant > Strumenti per sviluppatori > Stati_ filtrando `sensor.pun_prezzo_zonale` come entità e attivando la casella di controllo _Attributi_.
