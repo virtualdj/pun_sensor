@@ -4,5 +4,15 @@ set -e
 
 cd "$(dirname "$0")/../.."
 
-echo "Be patient, may take several minutes..."
-mypy --cache-dir=.mypy_cache custom_components/pun_sensor
+# Check if dmypy daemon is running
+if ! dmypy status &>/dev/null; then
+    # dmypy daemon not running, starting...
+    dmypy start
+    echo "Be patient, running 'dmypy' the first time may take several minutes..."
+else
+    # dmypy daemon is already running
+    echo "Running 'dmypy'..."
+fi
+
+# Run dmypy check
+dmypy check custom_components/pun_sensor
