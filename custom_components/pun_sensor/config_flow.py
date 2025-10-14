@@ -1,10 +1,11 @@
 """UI di configurazione per pun_sensor."""
 
+from typing import Any, TypeAlias
+
 from awesomeversion.awesomeversion import AwesomeVersion
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import __version__ as HA_VERSION
 from homeassistant.core import callback
 from homeassistant.helpers import selector
@@ -12,6 +13,12 @@ import homeassistant.helpers.config_validation as cv
 
 from .const import CONF_ACTUAL_DATA_ONLY, CONF_SCAN_HOUR, CONF_ZONA, DOMAIN
 from .interfaces import DEFAULT_ZONA, Zona
+
+# Configurazione del tipo di ritorno compatibile con HA 2023.4.0
+if AwesomeVersion(HA_VERSION) >= AwesomeVersion("2024.4.0"):
+    from homeassistant.config_entries import ConfigFlowResult
+else:
+    ConfigFlowResult: TypeAlias = dict[str, Any]  # type: ignore[no-redef]
 
 # Configurazione del selettore compatibile con HA 2023.4.0
 selector_config = selector.SelectSelectorConfig(
@@ -33,7 +40,7 @@ class PUNOptionsFlow(config_entries.OptionsFlow):
         if AwesomeVersion(HA_VERSION) < AwesomeVersion("2024.12.0b0"):
             self.config_entry = entry
 
-    async def async_step_init(self, user_input=None) -> ConfigFlowResult:
+    async def async_step_init(self, user_input=None) -> ConfigFlowResult | dict:  # pyright: ignore[reportInvalidTypeForm]
         """Gestisce le opzioni di configurazione."""
         errors: dict[str, str] | None = {}
         if user_input is not None:
