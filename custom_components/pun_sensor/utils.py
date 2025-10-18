@@ -202,7 +202,7 @@ def get_ordinal_hour(dt: datetime, ref_tz: ZoneInfo = ZoneInfo("Europe/Rome")) -
     # Converte l'ora passata in UTC
     dt_utc: datetime = dt.astimezone(timezone.utc)
 
-    # Calcola il numero di ore passate dal mezzanotte in UTC e somma 1
+    # Calcola il numero di ore passate dalla mezzanotte in UTC e somma 1
     return int((dt_utc - start_utc).total_seconds() // 3600) + 1
 
 
