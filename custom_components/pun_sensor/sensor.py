@@ -12,7 +12,12 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CURRENCY_EURO, UnitOfEnergy, __version__ as HA_VERSION
+from homeassistant.const import (
+    CURRENCY_EURO,
+    MATCH_ALL,
+    UnitOfEnergy,
+    __version__ as HA_VERSION,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import (
@@ -199,6 +204,9 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 class FasciaPUNSensorEntity(CoordinatorEntity, SensorEntity):
     """Sensore che rappresenta il nome la fascia oraria PUN corrente."""
 
+    # Non memorizza gli attributi nel recoder
+    _unrecorded_attributes = frozenset({MATCH_ALL})
+
     def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
         """Inizializza il sensore."""
         super().__init__(coordinator)
@@ -383,6 +391,9 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
 
 class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     """Sensore del prezzo zonale aggiornato ogni ora."""
+
+    # Non memorizza gli attributi nel recoder
+    _unrecorded_attributes = frozenset({MATCH_ALL})
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
         """Inizializza il sensore."""
@@ -598,6 +609,9 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 
 class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     """Sensore del prezzo PUN aggiornato ogni ora."""
+
+    # Non memorizza gli attributi nel recoder
+    _unrecorded_attributes = frozenset({MATCH_ALL})
 
     def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
         """Inizializza il sensore."""
