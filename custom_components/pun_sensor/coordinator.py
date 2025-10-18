@@ -28,6 +28,7 @@ from .const import (
     DOMAIN,
     EVENT_UPDATE_FASCIA,
     EVENT_UPDATE_PREZZO_ZONALE,
+    EVENT_UPDATE_PREZZO_ZONALE_15MIN,
     EVENT_UPDATE_PUN,
     WEB_RETRIES_MINUTES,
 )
@@ -35,6 +36,7 @@ from .interfaces import DEFAULT_ZONA, Fascia, PunData, PunValues, Zona
 from .utils import (
     add_timedelta_via_utc,
     extract_xml,
+    get_15min_datetime,
     get_fascia,
     get_hour_datetime,
     get_next_date,
@@ -140,6 +142,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         self.prossimo_cambio_fascia: datetime | None = None
         self.termine_prossima_fascia: datetime | None = None
         self.orario_prezzo: datetime = get_hour_datetime(dt_util.now(time_zone=tz_pun))
+        self.orario_prezzo_15min: datetime = get_15min_datetime(
+            dt_util.now(time_zone=tz_pun)
+        )
 
         _LOGGER.debug(
             "Coordinator inizializzato (con 'usa dati reali' = %s).",
@@ -432,4 +437,21 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
         async_track_point_in_time(
             self.hass, self.update_prezzo_zonale, next_update_prezzo_zonale
+        )
+
+    async def update_prezzo_zonale_15min(self, now=None) -> None:
+        """Aggiorna il prezzo zonale a 15 minuti corrente."""
+
+        # Aggiorna il nuovo orario
+        self.orario_prezzo_15min = get_15min_datetime(dt_util.now(time_zone=tz_pun))
+
+        # Notifica che i dati sono stati aggiornati (orario prezzo zonale a 15 minuti)
+        self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PREZZO_ZONALE_15MIN})
+
+        # Schedula la prossima esecuzione ai 15 minuti successivi ("spaccati")
+        next_update_prezzo_zonale_15min: datetime = add_timedelta_via_utc(
+            dt=self.orario_prezzo_15min, minutes=15
+        )
+        async_track_point_in_time(
+            self.hass, self.update_prezzo_zonale_15min, next_update_prezzo_zonale_15min
         )

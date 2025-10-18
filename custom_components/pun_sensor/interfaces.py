@@ -17,9 +17,16 @@ class PunData:
             Fascia.F23: [],
         }
 
+        # Nome della zona per i prezzi zonali
         self.zona: Zona = DEFAULT_ZONA
+
+        # Prezzi zonali e PUN orari
         self.prezzi_zonali: dict[str, float | None] = {}
         self.pun_orari: dict[str, float | None] = {}
+
+        # Prezzi zonali e PUN a 15 minuti
+        self.prezzi_zonali_15min: dict[str, float | None] = {}
+        self.pun_15min: dict[str, float | None] = {}
 
 
 class Fascia(Enum):

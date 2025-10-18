@@ -18,6 +18,7 @@ COORD_EVENT: str = "coordinator_event"
 EVENT_UPDATE_FASCIA: str = "event_update_fascia"
 EVENT_UPDATE_PUN: str = "event_update_pun"
 EVENT_UPDATE_PREZZO_ZONALE: str = "event_update_prezzo_zonale"
+EVENT_UPDATE_PREZZO_ZONALE_15MIN: str = "event_update_prezzo_zonale_15min"
 
 # Parametri configurabili da configuration.yaml
 CONF_SCAN_HOUR: str = "scan_hour"

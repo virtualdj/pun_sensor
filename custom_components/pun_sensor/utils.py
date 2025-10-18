@@ -331,6 +331,95 @@ def get_datetime_from_ordinal_hour(
     return end_utc.astimezone(ref_tz)
 
 
+def get_15min_datetime(dataora: datetime) -> datetime:
+    """Restituisce un datetime con solo la data, l'ora e i minuti arrotondati ai 15 precedenti.
+
+    Args:
+    dataora (datetime): Data e ora di partenza.
+
+    Returns:
+        datetime: La nuova data con solo giorno, ora e minuti a step di 15.
+
+    """
+    return datetime(
+        year=dataora.year,
+        month=dataora.month,
+        day=dataora.day,
+        hour=dataora.hour,
+        minute=(dataora.minute // 15) * 15,
+        second=0,
+        microsecond=0,
+        fold=dataora.fold,
+        tzinfo=dataora.tzinfo,
+    )
+
+
+def get_periodo_15min(dt: datetime, ref_tz: ZoneInfo = ZoneInfo("Europe/Rome")) -> int:
+    """Restituisce il periodo di 15 minuti della giornata (1-96 normalmente, 1-92 in primavera, 1-100 in autunno).
+
+    Args:
+        dt: datetime con timezone di cui restituire il periodo di 15 minuti
+        ref_tz: timezone di riferimento per il calcolo (di default usa "Europe/Rome")
+
+    Returns:
+        int: numero progressivo del periodo di 15 minuti (1-100)
+
+    Raises:
+        ValueError: se dt non ha timezone
+
+    """
+    # Controllo presenza fuso orario negli argomenti
+    if dt.tzinfo is None:
+        raise ValueError(
+            "L'argomento dt deve essere timezone-aware (es. ZoneInfo('Europe/Rome'))."
+        )
+
+    # Calcola la mezzanotte locale
+    local_midnight: datetime = datetime(dt.year, dt.month, dt.day, 0, 0, tzinfo=ref_tz)
+
+    # Converte la mezzanotte in UTC
+    start_utc: datetime = local_midnight.astimezone(timezone.utc)
+
+    # Converte l'ora passata in UTC
+    dt_utc: datetime = dt.astimezone(timezone.utc)
+
+    # Calcola il numero di quarti d'ora passati dalla mezzanotte in UTC e somma 1
+    return int((dt_utc - start_utc).total_seconds() // 900) + 1
+
+
+def get_datetime_from_periodo_15min(
+    dt: datetime | date, periodo_15min: int, ref_tz: ZoneInfo = ZoneInfo("Europe/Rome")
+) -> datetime:
+    """Restituisce il datetime corrispondente al periodo di 15 minuti del giorno `data`.
+
+    Args:
+        dt: datetime o date di riferimento
+        periodo_15min: il numero del periodo di 15 minuti del giorno `dt` da convertire (1..100)
+        ref_tz: timezone di riferimento per il calcolo (di default usa "Europe/Rome")
+
+    Raises:
+        ValueError: se periodo_15min non è compreso tra 1 e 100
+
+    Returns:
+        datetime: orario locale corrispondente all'ora progressiva specificata
+
+    """
+    if not (1 <= periodo_15min <= 100):
+        raise ValueError("periodo_15min deve essere compreso tra 1 e 100")
+
+    # Calcola la mezzanotte locale
+    local_midnight: datetime = datetime(dt.year, dt.month, dt.day, 0, 0, tzinfo=ref_tz)
+
+    # Converte la mezzanotte in UTC
+    start_utc: datetime = local_midnight.astimezone(timezone.utc)
+
+    # Aggiunge i periodi di 15 minuti effettivi trascorsi dalla mezzanotte
+    end_utc: datetime = start_utc + timedelta(minutes=15 * (periodo_15min - 1))
+
+    # Ritorna l'orario locale corrispondente
+    return end_utc.astimezone(ref_tz)
+
+
 def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
     """Estrae i valori del pun per ogni fascia da un archivio zip contenente un XML.
 
