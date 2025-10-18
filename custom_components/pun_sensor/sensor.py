@@ -34,13 +34,16 @@ from .const import (
     DOMAIN,
     EVENT_UPDATE_FASCIA,
     EVENT_UPDATE_PREZZO_ZONALE,
+    EVENT_UPDATE_PREZZO_ZONALE_15MIN,
     EVENT_UPDATE_PUN,
 )
 from .interfaces import Fascia, PunValues
 from .utils import (
     add_timedelta_via_utc,
     get_datetime_from_ordinal_hour,
+    get_datetime_from_periodo_15min,
     get_ordinal_hour,
+    get_periodo_15min,
     get_total_hours,
 )
 
@@ -69,7 +72,9 @@ async def async_setup_entry(
     entities.append(FasciaPUNSensorEntity(coordinator))
     entities.append(PrezzoFasciaPUNSensorEntity(coordinator))
     entities.append(PrezzoZonaleSensorEntity(coordinator))
+    entities.append(PrezzoZonale15MinSensorEntity(coordinator))
     entities.append(PUNOrarioSensorEntity(coordinator))
+    entities.append(PUN15MinSensorEntity(coordinator))
 
     # Aggiunge i sensori ma non aggiorna automaticamente via web
     # per lasciare il tempo ad Home Assistant di avviarsi
@@ -607,6 +612,238 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         return attributes
 
 
+class PrezzoZonale15MinSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
+    """Sensore del prezzo zonale aggiornato ogni 15 minuti."""
+
+    # Non memorizza gli attributi nel recoder
+    _unrecorded_attributes = frozenset({MATCH_ALL})
+
+    def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
+        """Inizializza il sensore."""
+        super().__init__(coordinator)
+
+        # Inizializza coordinator e tipo
+        self.coordinator: PUNDataUpdateCoordinator = coordinator
+
+        # ID univoco sensore basato su un nome fisso
+        self.entity_id = ENTITY_ID_FORMAT.format("pun_prezzo_zonale_15min")
+        self._attr_unique_id = self.entity_id
+        self._attr_has_entity_name = True
+
+        # Inizializza le proprietà comuni
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_suggested_display_precision = 6
+        self._available: bool = False
+        self._native_value: float = 0
+        self._friendly_name: str = "Prezzo zonale 15 min"
+        self._prezzi_zonali_15min: dict[str, float | None] = {}
+
+    def _handle_coordinator_update(self) -> None:
+        """Gestisce l'aggiornamento dei dati dal coordinator."""
+
+        # Identifica l'evento che ha scatenato l'aggiornamento
+        if self.coordinator.data is None:
+            return
+        if (coordinator_event := self.coordinator.data.get(COORD_EVENT)) is None:
+            return
+
+        # Aggiornata la zona e/o i prezzi
+        if coordinator_event == EVENT_UPDATE_PUN:
+            if self.coordinator.pun_data.zona is not None:
+                # Imposta il nome della zona
+                self._friendly_name = (
+                    f"Prezzo zonale 15 min ({self.coordinator.pun_data.zona.value})"
+                )
+                # Verifica che il coordinator abbia i prezzi
+                if self.coordinator.pun_data.prezzi_zonali_15min:
+                    # Copia i dati dal coordinator in locale (per il backup)
+                    self._prezzi_zonali_15min = dict(
+                        self.coordinator.pun_data.prezzi_zonali_15min
+                    )
+            else:
+                # Nessuna zona impostata
+                self._friendly_name = "Prezzo zonale 15 min"
+                self._prezzi_zonali_15min = {}
+                self._available = False
+                self.async_write_ha_state()
+                return
+
+        # Cambiato l'orario del prezzo
+        if coordinator_event in (EVENT_UPDATE_PUN, EVENT_UPDATE_PREZZO_ZONALE_15MIN):
+            if self.coordinator.pun_data.zona is not None:
+                # Controlla se il prezzo a 15 minuti esiste per il periodo corrente
+                _LOGGER.debug(
+                    "Aggiornamento data prezzo zonale 15 min: %s (XML: %s)",
+                    self.coordinator.orario_prezzo_15min,
+                    get_periodo_15min(self.coordinator.orario_prezzo_15min),
+                )
+                if (
+                    str(self.coordinator.orario_prezzo_15min)
+                    in self._prezzi_zonali_15min
+                ):
+                    # Aggiorna il valore al prezzo orario
+                    if (
+                        valore := self._prezzi_zonali_15min[
+                            str(self.coordinator.orario_prezzo_15min)
+                        ]
+                    ) is not None:
+                        self._native_value = valore
+                        self._available = True
+                    else:
+                        # Prezzo non disponibile
+                        self._available = False
+                else:
+                    # Orario non disponibile
+                    self._available = False
+            else:
+                # Nessuna zona impostata
+                self._available = False
+
+        # Aggiorna lo stato di Home Assistant
+        self.async_write_ha_state()
+
+    @property
+    def extra_restore_state_data(self) -> ExtraStoredData:
+        """Determina i dati da salvare per il ripristino successivo."""
+
+        # Salva i dati per la prossima istanza
+        return RestoredExtraData(
+            {
+                "friendly_name": self._friendly_name if self._available else None,
+                "zona": self.coordinator.pun_data.zona.name
+                if self.coordinator.pun_data.zona is not None
+                else None,
+                "prezzi_zonali_15min": self._prezzi_zonali_15min,
+            }
+        )
+
+    async def async_added_to_hass(self) -> None:
+        """Entità aggiunta ad Home Assistant."""
+        await super().async_added_to_hass()
+
+        # Recupera lo stato precedente, se esiste
+        if (old_data := await self.async_get_last_extra_data()) is not None:
+            # Recupera il dizionario con i valori precedenti
+            old_data_dict = old_data.as_dict()
+
+            # Zona geografica
+            if (old_zona_str := old_data_dict.get("zona")) is not None:
+                # Verifica che la zona attuale sia disponibile
+                # (se non lo è, c'è un errore nella configurazione)
+                if self.coordinator.pun_data.zona is None:
+                    _LOGGER.warning(
+                        "La zona geografica memorizzata '%s' non sembra essere più valida.",
+                        old_zona_str,
+                    )
+                    self._available = False
+                    return
+
+                # Controlla se la zona memorizzata è diversa dall'attuale
+                if old_zona_str != self.coordinator.pun_data.zona.name:
+                    _LOGGER.debug(
+                        "Ignorati i dati precedenti, perché riferiti alla zona '%s' (anziché '%s').",
+                        old_zona_str,
+                        self.coordinator.pun_data.zona.name,
+                    )
+                    self._available = False
+                    return
+
+            # Nome
+            if (old_friendly_name := old_data_dict.get("friendly_name")) is not None:
+                self._friendly_name = old_friendly_name
+
+            # Valori delle fasce orarie
+            if (
+                old_prezzi_zonali_15min := old_data_dict.get("prezzi_zonali_15min")
+            ) is not None:
+                self._prezzi_zonali_15min = old_prezzi_zonali_15min
+
+                # Controlla se il prezzo a 15 minuti esiste per il periodo corrente
+                if (
+                    str(self.coordinator.orario_prezzo_15min)
+                    in self._prezzi_zonali_15min
+                ):
+                    # Aggiorna il valore al prezzo a 15 minuti
+                    if (
+                        valore := self._prezzi_zonali_15min[
+                            str(self.coordinator.orario_prezzo_15min)
+                        ]
+                    ) is not None:
+                        self._native_value = valore
+                        self._available = True
+                    else:
+                        # Prezzo non disponibile
+                        self._available = False
+                else:
+                    # Imposta come non disponibile
+                    self._available = False
+
+    @property
+    def should_poll(self) -> bool:
+        """Determina l'aggiornamento automatico."""
+        return False
+
+    @property
+    def available(self) -> bool:
+        """Determina se il valore è disponibile."""
+        return self._available
+
+    @property
+    def native_value(self) -> float:
+        """Valore corrente del sensore."""
+        return self._native_value
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Unita' di misura."""
+        return f"{CURRENCY_EURO}/{UnitOfEnergy.KILO_WATT_HOUR}"
+
+    @property
+    def icon(self) -> str:
+        """Icona da usare nel frontend."""
+        return "mdi:map-clock-outline"
+
+    @property
+    def name(self) -> str | None:
+        """Restituisce il nome del sensore."""
+        return self._friendly_name
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Restituisce gli attributi di stato."""
+
+        # Crea il dizionario degli attributi
+        attributes: dict[str, Any] = {}
+
+        # Aggiunge i prezzi a 15 minuti negli attributi, periodo per periodo
+        if self.coordinator.pun_data.zona is not None:
+            # Prezzi di oggi
+            max_15min_oggi: int = 4 * get_total_hours(
+                self.coordinator.orario_prezzo_15min
+            )
+            for p in range(max_15min_oggi):
+                data_ora_prezzo = get_datetime_from_periodo_15min(
+                    self.coordinator.orario_prezzo_15min, (1 + p)
+                )
+                attributes[str(data_ora_prezzo)] = self._prezzi_zonali_15min.get(
+                    str(data_ora_prezzo)
+                )
+
+            # Prezzi di domani
+            domani = add_timedelta_via_utc(
+                dt=self.coordinator.orario_prezzo_15min, days=1
+            )
+            max_15min_domani: int = 4 * get_total_hours(domani)
+            for p in range(max_15min_domani):
+                data_ora_prezzo = get_datetime_from_periodo_15min(domani, (1 + p))
+                attributes[str(data_ora_prezzo)] = self._prezzi_zonali_15min.get(
+                    str(data_ora_prezzo)
+                )
+
+        # Restituisce gli attributi
+        return attributes
+
+
 class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     """Sensore del prezzo PUN aggiornato ogni ora."""
 
@@ -767,6 +1004,173 @@ class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         for h in range(max_ore_domani):
             data_ora_prezzo = get_datetime_from_ordinal_hour(domani, (1 + h))
             attributes[str(data_ora_prezzo)] = self._pun_orari.get(str(data_ora_prezzo))
+
+        # Restituisce gli attributi
+        return attributes
+
+
+class PUN15MinSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
+    """Sensore del prezzo PUN aggiornato ogni 15 minuti."""
+
+    # Non memorizza gli attributi nel recoder
+    _unrecorded_attributes = frozenset({MATCH_ALL})
+
+    def __init__(self, coordinator: PUNDataUpdateCoordinator) -> None:
+        """Inizializza il sensore."""
+        super().__init__(coordinator)
+
+        # Inizializza coordinator e tipo
+        self.coordinator: PUNDataUpdateCoordinator = coordinator
+
+        # ID univoco sensore basato su un nome fisso
+        self.entity_id = ENTITY_ID_FORMAT.format("pun_15min")
+        self._attr_unique_id = self.entity_id
+        self._attr_has_entity_name = True
+
+        # Inizializza le proprietà comuni
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_suggested_display_precision = 6
+        self._available: bool = False
+        self._native_value: float = 0
+        self._friendly_name: str = "PUN 15 min"
+        self._pun_15min: dict[str, float | None] = {}
+
+    def _handle_coordinator_update(self) -> None:
+        """Gestisce l'aggiornamento dei dati dal coordinator."""
+
+        # Identifica l'evento che ha scatenato l'aggiornamento
+        if self.coordinator.data is None:
+            return
+        if (coordinator_event := self.coordinator.data.get(COORD_EVENT)) is None:
+            return
+
+        # Aggiornati i prezzi PUN
+        if coordinator_event == EVENT_UPDATE_PUN:
+            # Verifica che il coordinator abbia i prezzi
+            if self.coordinator.pun_data.pun_15min:
+                # Copia i dati dal coordinator in locale (per il backup)
+                self._pun_15min = dict(self.coordinator.pun_data.pun_15min)
+
+        # Cambiato l'orario del prezzo
+        if coordinator_event in (EVENT_UPDATE_PUN, EVENT_UPDATE_PREZZO_ZONALE_15MIN):
+            # Controlla se il PUN a 15 minuti esiste per il periodo corrente
+            _LOGGER.debug(
+                "Aggiornamento data PUN 15 min: %s (XML: %s)",
+                self.coordinator.orario_prezzo_15min,
+                get_periodo_15min(self.coordinator.orario_prezzo_15min),
+            )
+            if str(self.coordinator.orario_prezzo_15min) in self._pun_15min:
+                # Aggiorna il valore al prezzo orario
+                if (
+                    valore := self._pun_15min[str(self.coordinator.orario_prezzo_15min)]
+                ) is not None:
+                    self._native_value = valore
+                    self._available = True
+                else:
+                    # Prezzo non disponibile
+                    self._available = False
+            else:
+                # Orario non disponibile
+                self._available = False
+
+        # Aggiorna lo stato di Home Assistant
+        self.async_write_ha_state()
+
+    @property
+    def extra_restore_state_data(self) -> ExtraStoredData:
+        """Determina i dati da salvare per il ripristino successivo."""
+
+        # Salva i dati per la prossima istanza
+        return RestoredExtraData(
+            {
+                "pun_15min": self._pun_15min,
+            }
+        )
+
+    async def async_added_to_hass(self) -> None:
+        """Entità aggiunta ad Home Assistant."""
+        await super().async_added_to_hass()
+
+        # Recupera lo stato precedente, se esiste
+        if (old_data := await self.async_get_last_extra_data()) is not None:
+            # Recupera il dizionario con i valori precedenti
+            old_data_dict = old_data.as_dict()
+
+            # Valori dei prezzi a 15 minuti
+            if (old_pun_15min := old_data_dict.get("pun_15min")) is not None:
+                self._pun_15min = old_pun_15min
+
+                # Controlla se il prezzo a 15 minuti esiste per il periodo corrente
+                if str(self.coordinator.orario_prezzo_15min) in self._pun_15min:
+                    # Aggiorna il valore al prezzo a 15 minuti
+                    if (
+                        valore := self._pun_15min[
+                            str(self.coordinator.orario_prezzo_15min)
+                        ]
+                    ) is not None:
+                        self._native_value = valore
+                        self._available = True
+                    else:
+                        # Prezzo non disponibile
+                        self._available = False
+                else:
+                    # Imposta come non disponibile
+                    self._available = False
+
+    @property
+    def should_poll(self) -> bool:
+        """Determina l'aggiornamento automatico."""
+        return False
+
+    @property
+    def available(self) -> bool:
+        """Determina se il valore è disponibile."""
+        return self._available
+
+    @property
+    def native_value(self) -> float:
+        """Valore corrente del sensore."""
+        return self._native_value
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Unita' di misura."""
+        return f"{CURRENCY_EURO}/{UnitOfEnergy.KILO_WATT_HOUR}"
+
+    @property
+    def icon(self) -> str:
+        """Icona da usare nel frontend."""
+        if AwesomeVersion(HA_VERSION) < AwesomeVersion("2024.1.0"):
+            return "mdi:receipt-clock-outline"
+        return "mdi:invoice-clock-outline"
+
+    @property
+    def name(self) -> str | None:
+        """Restituisce il nome del sensore."""
+        return self._friendly_name
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Restituisce gli attributi di stato."""
+
+        # Crea il dizionario degli attributi
+        attributes: dict[str, Any] = {}
+
+        # Aggiunge i prezzi a 15 minuti negli attributi, periodo per periodo
+        # Prezzi di oggi
+        max_15min_oggi: int = 4 * get_total_hours(self.coordinator.orario_prezzo_15min)
+        for p in range(max_15min_oggi):
+            data_ora_prezzo = get_datetime_from_periodo_15min(
+                self.coordinator.orario_prezzo_15min, (1 + p)
+            )
+            attributes[str(data_ora_prezzo)] = self._pun_15min.get(str(data_ora_prezzo))
+
+        # Prezzi di domani
+        domani = add_timedelta_via_utc(dt=self.coordinator.orario_prezzo_15min, days=1)
+        max_15min_domani: int = 4 * get_total_hours(domani)
+        for p in range(max_15min_domani):
+            data_ora_prezzo = get_datetime_from_periodo_15min(domani, (1 + p))
+            attributes[str(data_ora_prezzo)] = self._pun_15min.get(str(data_ora_prezzo))
 
         # Restituisce gli attributi
         return attributes
