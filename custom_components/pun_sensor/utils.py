@@ -447,12 +447,19 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
         # Parsing dell'XML (1 file = 1 giorno)
         xml_root = xml_tree.getroot()
 
-        # Salta per ora i file con i prezzi a 15 minuti
-        if xml_root.find("Prezzi15"):
-            continue
+        # Prova a cercare i prezzi orari come primo elemento
+        prezzi_15min: bool = False
+        primo_elemento = xml_root.find("Prezzi")
+        if primo_elemento is None:
+            # Prova a vedere se sono prezzi ogni 15 minuti
+            prezzi_15min = True
+            primo_elemento = xml_root.find("Prezzi15")
+            if primo_elemento is None:
+                _LOGGER.debug("Nessun prezzo supportato trovato nel file XML: %s", fn)
+                continue
 
         # Estrae la data dal primo elemento (sarà identica per gli altri)
-        dat_string: str = xml_root.find("Prezzi").find("Data").text  # YYYYMMDD
+        dat_string: str = primo_elemento.find("Data").text  # YYYYMMDD
 
         # Converte la stringa giorno in data
         dat_date: date = date(
@@ -461,72 +468,164 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
             int(dat_string[6:8]),
         )
 
-        # Ottiene il numero massimo di ora per la data specificata
-        max_ore: int = get_total_hours(dat_date)
-
         # Verifica la festività
         festivo: bool = dat_date in it_holidays
 
-        # Estrae le rimanenti informazioni
-        for prezzi in xml_root.iter("Prezzi"):
-            # Estrae l'ora dall'XML
-            ora_xml: int = int(prezzi.find("Ora").text)
+        # Verifica se si tratta di prezzi ogni 15 minuti
+        if prezzi_15min:
+            # Ottiene il numero massimo di periodi di 15 minuti per la data specificata
+            max_periodi: int = 4 * get_total_hours(dat_date)
 
-            # Valida l'orario XML
-            # 1..24 normalmente, ma anche 1..23 o 1..25 nei cambi ora
-            if not (1 <= ora_xml <= max_ore):
-                _LOGGER.warning(
-                    "Orario %s non valido per %s (max: %s).",
-                    ora_xml,
-                    dat_string,
-                    max_ore,
-                )
+            # Considera solo oggi e domani per i prezzi ogni 15 minuti
+            if dat_date >= today:
+                # Estrae le rimanenti informazioni
+                for prezzi in xml_root.iter("Prezzi15"):
+                    # Verifica che il mercato sia corretto
+                    if prezzi.find("Mercato").text != "MGP":
+                        _LOGGER.warning(
+                            "Mercato non supportato per i prezzi a 15 minuti nel file XML: %s.",
+                            fn,
+                        )
+                        break
 
-            # Converte l'ora in un datetime
-            orario_prezzo: datetime = get_datetime_from_ordinal_hour(dat_date, ora_xml)
+                    # Verifica che la granularità sia corretta
+                    if prezzi.find("Granularity").text != "PT15":
+                        _LOGGER.warning(
+                            "Granularità non supportata per i prezzi a 15 minuti nel file XML: %s.",
+                            fn,
+                        )
+                        break
 
-            # Estrae il prezzo PUN dall'XML in un float
-            if (prezzo_xml := prezzi.find("PUN")) is not None:
-                prezzo_string: str = prezzo_xml.text.replace(".", "").replace(",", ".")
-                prezzo: float = float(prezzo_string) / 1000
+                    # Estrae il periodo dall'XML
+                    periodo_xml: int = int(prezzi.find("Periodo").text)
 
-                # Per le medie mensili, considera solo i dati fino ad oggi
-                if dat_date <= today:
-                    # Estrae la fascia oraria
-                    fascia: Fascia = get_fascia_for_xml(
-                        dat_date, festivo, orario_prezzo.hour
+                    # Valida il periodo XML
+                    # 1 .. 96 normalmente, ma anche 1..92 o 1..100 nei cambi ora
+                    if not (1 <= periodo_xml <= max_periodi):
+                        _LOGGER.warning(
+                            "Periodo %s non valido per %s (max: %s).",
+                            periodo_xml,
+                            dat_string,
+                            max_periodi,
+                        )
+
+                    # Converte il periodo in un datetime
+                    orario_prezzo_15min: datetime = get_datetime_from_periodo_15min(
+                        dat_date, periodo_xml
                     )
 
-                    # Calcola le statistiche
-                    pun_data.pun[Fascia.MONO].append(prezzo)
-                    pun_data.pun[fascia].append(prezzo)
-
-                # Per il PUN orario, considera solo oggi e domani
-                if dat_date >= today:
-                    # Salva il prezzo per quell'orario
-                    pun_data.pun_orari[str(orario_prezzo)] = prezzo
-            else:
-                # PUN non valido
-                _LOGGER.warning(
-                    "PUN non specificato per %s ad orario: %s.", dat_string, ora_xml
-                )
-
-            # Per i prezzi zonali, considera solo oggi e domani
-            if dat_date >= today:
-                # Controlla che la zona del prezzo zonale sia impostata
-                if pun_data.zona is not None:
-                    # Estrae il prezzo zonale dall'XML in un float
-                    # basandosi sul nome dell'enum
-                    if (
-                        prezzo_zonale_xml := prezzi.find(pun_data.zona.name)
-                    ) is not None:
-                        prezzo_zonale_string: str = prezzo_zonale_xml.text.replace(
+                    # Estrae il prezzo PUN dall'XML in un float
+                    if (prezzo_xml := prezzi.find("PUN")) is not None:
+                        prezzo_string_15min: str = prezzo_xml.text.replace(
                             ".", ""
                         ).replace(",", ".")
-                        pun_data.prezzi_zonali[str(orario_prezzo)] = (
-                            float(prezzo_zonale_string) / 1000
-                        )
+                        prezzo_15min: float = float(prezzo_string_15min) / 1000
+
+                        # Salva il prezzo per quell'orario
+                        pun_data.pun_15min[str(orario_prezzo_15min)] = prezzo_15min
                     else:
-                        pun_data.prezzi_zonali[str(orario_prezzo)] = None
+                        # PUN non valido
+                        _LOGGER.warning(
+                            "PUN non specificato per %s al periodo: %s.",
+                            dat_string,
+                            periodo_xml,
+                        )
+
+                    # Controlla che la zona del prezzo zonale sia impostata
+                    if pun_data.zona is not None:
+                        # Estrae il prezzo zonale dall'XML in un float
+                        # basandosi sul nome dell'enum
+                        if (
+                            prezzo_zonale_xml := prezzi.find(pun_data.zona.name)
+                        ) is not None:
+                            prezzo_zonale_string_15min: str = (
+                                prezzo_zonale_xml.text.replace(".", "").replace(
+                                    ",", "."
+                                )
+                            )
+                            pun_data.prezzi_zonali_15min[str(orario_prezzo_15min)] = (
+                                float(prezzo_zonale_string_15min) / 1000
+                            )
+                        else:
+                            pun_data.prezzi_zonali_15min[str(orario_prezzo_15min)] = (
+                                None
+                            )
+        else:
+            # Ottiene il numero massimo di ore per la data specificata
+            max_ore: int = get_total_hours(dat_date)
+
+            # Estrae le rimanenti informazioni
+            for prezzi in xml_root.iter("Prezzi"):
+                # Verifica che il mercato sia corretto
+                if prezzi.find("Mercato").text != "MGP":
+                    _LOGGER.warning(
+                        "Mercato non supportato per i prezzi orari nel file XML: %s.",
+                        fn,
+                    )
+                    break
+
+                # Estrae l'ora dall'XML
+                ora_xml: int = int(prezzi.find("Ora").text)
+
+                # Valida l'orario XML
+                # 1..24 normalmente, ma anche 1..23 o 1..25 nei cambi ora
+                if not (1 <= ora_xml <= max_ore):
+                    _LOGGER.warning(
+                        "Orario %s non valido per %s (max: %s).",
+                        ora_xml,
+                        dat_string,
+                        max_ore,
+                    )
+
+                # Converte l'ora in un datetime
+                orario_prezzo: datetime = get_datetime_from_ordinal_hour(
+                    dat_date, ora_xml
+                )
+
+                # Estrae il prezzo PUN dall'XML in un float
+                if (prezzo_xml := prezzi.find("PUN")) is not None:
+                    prezzo_string: str = prezzo_xml.text.replace(".", "").replace(
+                        ",", "."
+                    )
+                    prezzo: float = float(prezzo_string) / 1000
+
+                    # Per le medie mensili, considera solo i dati fino ad oggi
+                    if dat_date <= today:
+                        # Estrae la fascia oraria
+                        fascia: Fascia = get_fascia_for_xml(
+                            dat_date, festivo, orario_prezzo.hour
+                        )
+
+                        # Calcola le statistiche
+                        pun_data.pun[Fascia.MONO].append(prezzo)
+                        pun_data.pun[fascia].append(prezzo)
+
+                    # Per il PUN orario, considera solo oggi e domani
+                    if dat_date >= today:
+                        # Salva il prezzo per quell'orario
+                        pun_data.pun_orari[str(orario_prezzo)] = prezzo
+                else:
+                    # PUN non valido
+                    _LOGGER.warning(
+                        "PUN non specificato per %s ad orario: %s.", dat_string, ora_xml
+                    )
+
+                # Per i prezzi zonali, considera solo oggi e domani
+                if dat_date >= today:
+                    # Controlla che la zona del prezzo zonale sia impostata
+                    if pun_data.zona is not None:
+                        # Estrae il prezzo zonale dall'XML in un float
+                        # basandosi sul nome dell'enum
+                        if (
+                            prezzo_zonale_xml := prezzi.find(pun_data.zona.name)
+                        ) is not None:
+                            prezzo_zonale_string: str = prezzo_zonale_xml.text.replace(
+                                ".", ""
+                            ).replace(",", ".")
+                            pun_data.prezzi_zonali[str(orario_prezzo)] = (
+                                float(prezzo_zonale_string) / 1000
+                            )
+                        else:
+                            pun_data.prezzi_zonali[str(orario_prezzo)] = None
 
     return pun_data
