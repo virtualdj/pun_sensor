@@ -161,6 +161,7 @@ def get_hour_datetime(dataora: datetime) -> datetime:
         minute=0,
         second=0,
         microsecond=0,
+        fold=dataora.fold,
         tzinfo=dataora.tzinfo,
     )
 
