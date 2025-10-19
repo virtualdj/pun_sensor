@@ -483,16 +483,18 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                     # Verifica che il mercato sia corretto
                     if prezzi.find("Mercato").text != "MGP":
                         _LOGGER.warning(
-                            "Mercato non supportato per i prezzi a 15 minuti nel file XML: %s.",
+                            "Mercato non supportato per i prezzi a 15 minuti nel file XML: %s.\n%s",
                             fn,
+                            et.tostring(prezzi, encoding="unicode", method="xml"),
                         )
                         break
 
                     # Verifica che la granularità sia corretta
                     if prezzi.find("Granularity").text != "PT15":
                         _LOGGER.warning(
-                            "Granularità non supportata per i prezzi a 15 minuti nel file XML: %s.",
+                            "Granularità non supportata per i prezzi a 15 minuti nel file XML: %s.\n%s",
                             fn,
+                            et.tostring(prezzi, encoding="unicode", method="xml"),
                         )
                         break
 
@@ -559,8 +561,9 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                 # Verifica che il mercato sia corretto
                 if prezzi.find("Mercato").text != "MGP":
                     _LOGGER.warning(
-                        "Mercato non supportato per i prezzi orari nel file XML: %s.",
+                        "Mercato non supportato per i prezzi orari nel file XML: %s.\n%s",
                         fn,
+                        et.tostring(prezzi, encoding="unicode", method="xml"),
                     )
                     break
 
