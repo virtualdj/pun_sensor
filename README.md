@@ -98,15 +98,17 @@ In maniera simile al prezzo zonale, anche il valore del PUN orario (nome sensore
 
 ### In caso di problemi
 
-È possibile abilitare la registrazione dei log tramite l'interfaccia grafica in **Impostazioni > Dispositivi e servizi > Prezzi PUN del mese** e cliccando sul pulsante **Abilita la registrazione di debug**.
+È possibile abilitare la registrazione dei log tramite l'interfaccia grafica in **Impostazioni > Dispositivi e servizi > Prezzi PUN del mese** e cliccando sul pulsante **⋮ > Abilita la registrazione di debug**.
 
 ![Abilitazione log di debug](screenshot_debug_1.png "Abilitazione log di debug")
 
-Il tasto verrà modificato come nell'immagine qui sotto:
+Il tasto verrà modificato come nell'immagine qui sotto; dopo che si verifica il problema, premere su **Disabilita**.
 
-![Estrazione log di debug](screenshot_debug_2.png "Estrazione log di debug")
+![Disabilitazione log di debug](screenshot_debug_2.png "Disabilitazione log di debug")
 
-Dopo che si verifica il problema, premerlo nuovamente: in questo modo verrà scaricato un file di log con le informazioni da allegare alle [Issue](https://github.com/virtualdj/pun_sensor/issues).
+In questo modo verrà scaricato un file di log con le informazioni da allegare alle [Issue](https://github.com/virtualdj/pun_sensor/issues).
+
+![Download del file di log](screenshot_debug_3.png "Download del file di log")
 
 ## Note di sviluppo
 
