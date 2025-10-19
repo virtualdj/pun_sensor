@@ -27,7 +27,7 @@ La prima casella a discesa permette di selezionare la _zona geografica_ di rifer
 
 Tramite lo slider invece è possibile selezionare un'_ora del giorno_ in cui scaricare i prezzi aggiornati dell'energia (default: 1); il minuto di esecuzione, invece, è determinato automaticamente per evitare di gravare eccessivamente sulle API del sito (e mantenuto fisso, finché l'ora non viene modificata). Se per qualche ragione il sito non fosse raggiungibile, verranno effettuati altri tentativi dopo 10, 60, 120 e 180 minuti.
 
-Nel caso si fosse interessati ai prezzi zonali, selezionare un'orario uguale o superiore a 15, così da essere sicuri che il GME abbia pubblicato i dati anche del giorno successivo (accessibili tramite gli [attributi dello stesso sensore](#prezzo-zonale)).
+Nel caso si fosse interessati ai prezzi zonali, selezionare un'**orario uguale o superiore a 15**, così da essere sicuri che il GME abbia pubblicato i dati anche del **giorno successivo** (accessibili tramite gli [attributi dello stesso sensore](#prezzo-zonale)).
 
 Se la casella di controllo _Usa solo dati reali ad inizio mese_ è **attivata**, all'inizio del mese quando non ci sono i prezzi per tutte le fasce orarie questi vengono disabilitati (non viene mostrato quindi un prezzo in €/kWh finché i dati non sono in numero sufficiente); nel caso invece la casella fosse **disattivata** (default) nel conteggio vengono inclusi gli ultimi giorni del mese precedente in modo da avere sempre un valore in €/kWh.
 
@@ -41,7 +41,7 @@ Se la casella di controllo _Usa solo dati reali ad inizio mese_ è **attivata**,
 
 L'integrazione fornisce il nome della fascia corrente relativa all'orario di Home Assistant (tra F1 / F2 / F3), i prezzi delle tre fasce F1 / F2 / F3 più la fascia mono-oraria, la [fascia F23](#fascia-f23-)\* e il prezzo della fascia corrente. Questi sono i dati intesi come mensili, da paragonare a quelli in bolletta una volta aggiunti costi fissi e tasse (vedere [_prezzo al dettaglio_](#prezzo-al-dettaglio)).
 
-Poi ci sono i due sensori con i prezzi orari (con il simbolo dell'orologio nell'icona), ad esempio utilizzabili per calcoli con impianti fotovoltaici: [PUN orario](#pun-orario) e [prezzo zonale](#prezzo-zonale).
+Poi ci sono i sensori con i prezzi orari (con il simbolo dell'orologio nell'icona), ad esempio utilizzabili per calcoli con impianti fotovoltaici: [PUN orario](#pun-orario-e-pun-15-minuti) e [prezzo zonale](#prezzo-zonale) che dalla versione 4 (ottobre 2025) sono disponibili anche nelle varianti a 15 minuti.
 
 ### Prezzo al dettaglio
 
@@ -88,13 +88,20 @@ Prezzo zonale di oggi e domani
 {%- set prezzo_prossimo = state_attr('sensor.pun_prezzo_zonale', orario_prossimo | string) -%}
 Prezzo zonale prossimo = {{ "%.6f" % prezzo_prossimo }} €/kWh
 ({{ orario_prossimo }})
+
+{# Esempio di recupero del prossimo prezzo zonale da 15 minuti #}
+{%- set orario_prossimo_15min = (utcnow() + timedelta(minutes=15)).astimezone(now().tzinfo) -%}
+{%- set orario_prossimo_15min = orario_prossimo_15min.replace(minute=(orario_prossimo_15min.minute // 15) * 15, second=0, microsecond=0) -%}
+{%- set prezzo_prossimo_15min = state_attr('sensor.pun_prezzo_zonale_15min', orario_prossimo_15min | string) -%}
+Prezzo zonale prossimo da 15 minuti = {{ "%.6f" % prezzo_prossimo_15min }} €/kWh
+({{ orario_prossimo_15min }})
 ```
 
-I dati sono visibili anche in _Home Assistant > Strumenti per sviluppatori > Stati_ filtrando `sensor.pun_prezzo_zonale` come entità e attivando la casella di controllo _Attributi_.
+I dati sono visibili anche in _Home Assistant > Strumenti per sviluppatori > Stati_ filtrando `sensor.pun_prezzo_zonale` come entità e attivando la casella di controllo _Attributi_. Lo stesso vale per i prezzi a 15 minuti, filtrando `sensor.pun_prezzo_zonale_15min`.
 
-### PUN orario
+### PUN orario e PUN 15 minuti
 
-In maniera simile al prezzo zonale, anche il valore del PUN orario (nome sensore: `sensor.pun_orario`) ha gli attributi con i prezzi di oggi e domani, se disponibili.
+In maniera simile al prezzo zonale, anche i valori del PUN orario (nome sensore: `sensor.pun_orario`) e PUN 15 minuti (nome sensore: `pun_15min`) hanno gli attributi con i prezzi di oggi e domani, se disponibili.
 
 ### In caso di problemi
 
