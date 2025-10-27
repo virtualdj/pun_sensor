@@ -262,7 +262,7 @@ def add_timedelta_via_utc(
     *,
     dt: datetime,
     delta: timedelta | None = None,
-    days: int = 0,
+    full_days: int = 0,
     hours: int = 0,
     minutes: int = 0,
     ref_tz: ZoneInfo = ZoneInfo("Europe/Rome"),
@@ -272,7 +272,7 @@ def add_timedelta_via_utc(
     Args:
         dt: datetime con timezone su cui operare
         delta: timedelta da aggiungere
-        days: giorni da aggiungere (se delta è None)
+        full_days: giorni completi (non 24 ore!) da aggiungere (se delta è None)
         hours: ore da aggiungere (se delta è None)
         minutes: minuti da aggiungere (se delta è None)
         ref_tz: timezone di riferimento per il calcolo (di default usa "Europe/Rome")
@@ -292,7 +292,14 @@ def add_timedelta_via_utc(
 
     # Controllo timedelta
     if delta is None:
-        delta = timedelta(days=days, hours=hours, minutes=minutes)
+        # Verifica se sono specificati i giorni
+        if full_days != 0:
+            # I giorni si intendono sempre completi, non 24 ore in UTC
+            # (quindi composti da 23 o 25 ore nei giorni di cambio ora)
+            return dt + timedelta(days=full_days)
+
+        # Altrimenti considera il delta di ore e minuti
+        delta = timedelta(hours=hours, minutes=minutes)
 
     # Aggiunge il delta in UTC (per considerare anche i cambiamenti ora solare/legale)
     return (dt.astimezone(timezone.utc) + delta).astimezone(ref_tz)
