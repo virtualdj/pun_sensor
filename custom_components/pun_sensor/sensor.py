@@ -600,7 +600,9 @@ class PrezzoZonaleSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
                 )
 
             # Prezzi di domani
-            domani = add_timedelta_via_utc(dt=self.coordinator.orario_prezzo, days=1)
+            domani = add_timedelta_via_utc(
+                dt=self.coordinator.orario_prezzo, full_days=1
+            )
             max_ore_domani: int = get_total_hours(domani)
             for h in range(max_ore_domani):
                 data_ora_prezzo = get_datetime_from_ordinal_hour(domani, (1 + h))
@@ -831,7 +833,7 @@ class PrezzoZonale15MinSensorEntity(CoordinatorEntity, SensorEntity, RestoreEnti
 
             # Prezzi di domani
             domani = add_timedelta_via_utc(
-                dt=self.coordinator.orario_prezzo_15min, days=1
+                dt=self.coordinator.orario_prezzo_15min, full_days=1
             )
             max_15min_domani: int = 4 * get_total_hours(domani)
             for p in range(max_15min_domani):
@@ -999,7 +1001,7 @@ class PUNOrarioSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
             attributes[str(data_ora_prezzo)] = self._pun_orari.get(str(data_ora_prezzo))
 
         # Prezzi di domani
-        domani = add_timedelta_via_utc(dt=self.coordinator.orario_prezzo, days=1)
+        domani = add_timedelta_via_utc(dt=self.coordinator.orario_prezzo, full_days=1)
         max_ore_domani: int = get_total_hours(domani)
         for h in range(max_ore_domani):
             data_ora_prezzo = get_datetime_from_ordinal_hour(domani, (1 + h))
@@ -1166,7 +1168,9 @@ class PUN15MinSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
             attributes[str(data_ora_prezzo)] = self._pun_15min.get(str(data_ora_prezzo))
 
         # Prezzi di domani
-        domani = add_timedelta_via_utc(dt=self.coordinator.orario_prezzo_15min, days=1)
+        domani = add_timedelta_via_utc(
+            dt=self.coordinator.orario_prezzo_15min, full_days=1
+        )
         max_15min_domani: int = 4 * get_total_hours(domani)
         for p in range(max_15min_domani):
             data_ora_prezzo = get_datetime_from_periodo_15min(domani, (1 + p))
