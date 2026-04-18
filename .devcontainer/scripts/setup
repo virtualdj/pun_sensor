@@ -4,6 +4,9 @@ set -e
 
 cd "$(dirname "$0")/../.."
 
+# Remove yarn list to avoid errors in apt-get
+sudo rm -f /etc/apt/sources.list.d/yarn.list
+
 # Install libpcap and libturbojpeg to avoid errors in Home Assistant
 sudo apt-get update
 sudo apt-get install -y libpcap-dev libturbojpeg0
