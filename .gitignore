@@ -128,6 +128,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Home Assistant Config
+# Home Assistant config
 /config/*
 !/config/configuration.yaml
+
+# Other Home Assistant custom_components
+/custom_components/*
+!/custom_components/pun_sensor/*
