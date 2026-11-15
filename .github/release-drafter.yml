@@ -32,7 +32,7 @@ version-resolver:
       - 'patch'
   default: patch
 template: |
-  [![Downloads di questa release](https://img.shields.io/github/downloads/drego85/pun_sensor/v$RESOLVED_VERSION/total.svg)](https://github.com/drego85/pun_sensor/releases/v$RESOLVED_VERSION)
+  [![Downloads di questa release](https://img.shields.io/github/downloads/virtualdj/pun_sensor/v$RESOLVED_VERSION/total.svg)](https://github.com/virtualdj/pun_sensor/releases/v$RESOLVED_VERSION)
   ## Cambiamenti
 
   $CHANGES

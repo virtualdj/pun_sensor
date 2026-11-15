@@ -2,18 +2,8 @@
 
 [![marketplace_badge](https://img.shields.io/badge/Home_Assistant-Marketplace-41BDF5.svg?style=for-the-badge)](https://www.home-assistant.io/integrations/marketplace/)
 
-[![Validate](https://github.com/drego85/pun_sensor/actions/workflows/validate.yaml/badge.svg?branch=master)](https://github.com/drego85/pun_sensor/actions/workflows/validate.yaml)
-[![release](https://img.shields.io/github/v/release/drego85/pun_sensor?style=flat-square)](https://github.com/drego85/pun_sensor/releases)
-
-Fork di [virtualdj/pun_sensor](https://github.com/virtualdj/pun_sensor), mantenuto da
-[drego85](https://github.com/drego85). Le correzioni generiche vengono preparate con
-test di regressione per poterle proporre anche al progetto originale. I riferimenti
-storici e l'attribuzione agli autori originali sono conservati.
-
-Il fork è in sviluppo: è disponibile una prerelease di prova, non ancora una
-release stabile. Le correzioni successive restano sul ramo `fix/reliability`
-finché non vengono incluse in un nuovo pacchetto di release.
-Non installare un branch di sviluppo su un'istanza di produzione senza backup.
+[![Validate](https://github.com/virtualdj/pun_sensor/actions/workflows/validate.yaml/badge.svg?branch=master)](https://github.com/virtualdj/pun_sensor/actions/workflows/validate.yaml)
+[![release](https://img.shields.io/github/v/release/virtualdj/pun_sensor?style=flat-square)](https://github.com/virtualdj/pun_sensor/releases)
 
 Integrazione per **Home Assistant** (basata inizialmente sullo script [pun-fasce](https://github.com/virtualdj/pun-fasce)) che mostra i prezzi stimati del mese corrente per fasce orarie (F1, F2, F3, mono-oraria e F23\*) nonché la fascia oraria attuale.
 
@@ -23,17 +13,13 @@ Oltre a questo, sono stati inseriti un sensore con il prezzo del PUN orario e un
 
 ## Installazione in Home Assistant
 
-Per la prerelease abilitare le versioni beta nel Marketplace e selezionare
-esplicitamente il tag desiderato. Non installare il vecchio `master` per ottenere
-le correzioni del ramo `fix/reliability`.
-
 ### Home Assistant 2026.11 e successive
 
 HACS è integrato in Home Assistant come [Marketplace](https://www.home-assistant.io/integrations/marketplace/).
 Non installare separatamente la vecchia integrazione HACS.
 
 Aprire **Impostazioni > Marketplace**, scegliere **Aggiungi da link** (*Add from link*)
-e inserire `https://github.com/drego85/pun_sensor`. Per aggiungere repository
+e inserire `https://github.com/virtualdj/pun_sensor`. Per aggiungere repository
 personalizzati il Marketplace richiede il collegamento a GitHub. Aprire quindi
 la pagina del repository, selezionare **Installa** e seguire la configurazione e le
 eventuali richieste di riavvio mostrate da Home Assistant.
@@ -46,7 +32,7 @@ Home Assistant.
 
 Usare [HACS](https://hacs.xyz/) tramite il menu con i tre puntini nell'angolo in alto
 a destra, scegliendo *Add custom repository* e aggiungendo
-`https://github.com/drego85/pun_sensor` alla lista.
+`https://github.com/virtualdj/pun_sensor` alla lista.
 
 ### Installazione manuale
 
@@ -157,13 +143,13 @@ Il tasto verrà modificato come nell'immagine qui sotto; dopo che si verifica il
 
 ![Disabilitazione log di debug](screenshot_debug_2.png "Disabilitazione log di debug")
 
-In questo modo verrà scaricato un file di log con le informazioni da allegare alle [Issue del fork](https://github.com/drego85/pun_sensor/issues), dopo aver rimosso eventuali dati personali o credenziali.
+In questo modo verrà scaricato un file di log con le informazioni da allegare alle [Issue del progetto](https://github.com/virtualdj/pun_sensor/issues), dopo aver rimosso eventuali dati personali o credenziali.
 
 ![Download del file di log](screenshot_debug_3.png "Download del file di log")
 
 ## Note di sviluppo
 
-### Test del fork
+### Test di regressione
 
 Usare un ambiente separato da Home Assistant di produzione con Python 3.14:
 

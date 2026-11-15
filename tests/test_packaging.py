@@ -6,8 +6,11 @@ import shutil
 import subprocess
 import sys
 
+import pytest
 
-def test_release_manifest_includes_tested_minimum_dependency(tmp_path):
+
+@pytest.mark.parametrize("version", ["1.2.3", "2.0.0-beta.1"])
+def test_release_manifest_includes_tested_minimum_dependency(tmp_path, version):
     """Follow HA's shared package upgrades while retaining the tested minimum."""
     root = Path(__file__).parents[1]
     component = tmp_path / "custom_components/pun_sensor"
@@ -20,7 +23,7 @@ def test_release_manifest_includes_tested_minimum_dependency(tmp_path):
             "-B",
             str(root / ".github/workflows/update_manifest.py"),
             "--version",
-            "4.0.2-beta.2",
+            version,
         ],
         cwd=tmp_path,
         check=True,
@@ -28,6 +31,6 @@ def test_release_manifest_includes_tested_minimum_dependency(tmp_path):
         text=True,
     )
     manifest = json.loads((component / "manifest.json").read_text())
-    assert manifest["version"] == "4.0.2-beta.2"
+    assert manifest["version"] == version
     assert manifest["requirements"] == ["holidays>=0.108"]
     assert manifest["domain"] == "pun_sensor"
