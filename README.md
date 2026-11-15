@@ -1,6 +1,6 @@
 # Prezzi PUN del mese
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+[![marketplace_badge](https://img.shields.io/badge/Home_Assistant-Marketplace-41BDF5.svg?style=for-the-badge)](https://www.home-assistant.io/integrations/marketplace/)
 
 [![Validate](https://github.com/virtualdj/pun_sensor/actions/workflows/validate.yaml/badge.svg?branch=master)](https://github.com/virtualdj/pun_sensor/actions/workflows/validate.yaml)
 [![release](https://img.shields.io/github/v/release/virtualdj/pun_sensor?style=flat-square)](https://github.com/virtualdj/pun_sensor/releases)
@@ -13,7 +13,28 @@ Oltre a questo, sono stati inseriti un sensore con il prezzo del PUN orario e un
 
 ## Installazione in Home Assistant
 
-Installare usando [HACS](https://hacs.xyz/) tramite il menu con i tre puntini nell'angolo in alto a destra e scegliendo _Add custom repository_ e aggiungendo l'URL https://github.com/virtualdj/pun_sensor alla lista.
+### Home Assistant 2026.11 e successive
+
+HACS è integrato in Home Assistant come [Marketplace](https://www.home-assistant.io/integrations/marketplace/).
+Non installare separatamente la vecchia integrazione HACS.
+
+Aprire **Impostazioni > Marketplace**, scegliere **Aggiungi da link** (*Add from link*)
+e inserire `https://github.com/virtualdj/pun_sensor`. Per aggiungere repository
+personalizzati il Marketplace richiede il collegamento a GitHub. Aprire quindi
+la pagina del repository, selezionare **Installa** e seguire la configurazione e le
+eventuali richieste di riavvio mostrate da Home Assistant.
+
+L'integrazione resta un componente della comunità: l'inclusione del Marketplace
+nel Core non significa che questo codice sia verificato o supportato dal progetto
+Home Assistant.
+
+### Home Assistant 2026.10 e precedenti
+
+Usare [HACS](https://hacs.xyz/) tramite il menu con i tre puntini nell'angolo in alto
+a destra, scegliendo *Add custom repository* e aggiungendo
+`https://github.com/virtualdj/pun_sensor` alla lista.
+
+### Installazione manuale
 
 Installare **manualmente** clonando o copiando questa repository e poi copiando la cartella `custom_components/pun_sensor` nella cartella `/custom_components/pun_sensor` di Home Assistant, che andrà successivamente riavviato.
 
@@ -105,6 +126,15 @@ In maniera simile al prezzo zonale, anche i valori del PUN orario (nome sensore:
 
 ### In caso di problemi
 
+Le medie mensili e il prezzo della fascia corrente espongono anche gli attributi
+`dati_del`, `ultimo_aggiornamento` e `dati_non_aggiornati`. Un errore di rete non
+cancella l'ultima acquisizione valida della giornata, ma la contrassegna come non
+aggiornata. Il semplice passaggio di ora o fascia non cancella l'errore di download.
+Le medie del giorno precedente e i vecchi backup senza data non vengono mostrati
+come medie aggiornate: occorre una nuova acquisizione. Il ripristino del prezzo
+della fascia corrente richiede anche che la fascia memorizzata corrisponda a quella
+attuale. I prezzi orari e a 15 minuti restano legati al loro preciso intervallo.
+
 È possibile abilitare la registrazione dei log tramite l'interfaccia grafica in **Impostazioni > Dispositivi e servizi > Prezzi PUN del mese** e cliccando sul pulsante **⋮ > Abilita la registrazione di debug**.
 
 ![Abilitazione log di debug](screenshot_debug_1.png "Abilitazione log di debug")
@@ -113,10 +143,42 @@ Il tasto verrà modificato come nell'immagine qui sotto; dopo che si verifica il
 
 ![Disabilitazione log di debug](screenshot_debug_2.png "Disabilitazione log di debug")
 
-In questo modo verrà scaricato un file di log con le informazioni da allegare alle [Issue](https://github.com/virtualdj/pun_sensor/issues).
+In questo modo verrà scaricato un file di log con le informazioni da allegare alle [Issue del progetto](https://github.com/virtualdj/pun_sensor/issues), dopo aver rimosso eventuali dati personali o credenziali.
 
 ![Download del file di log](screenshot_debug_3.png "Download del file di log")
 
 ## Note di sviluppo
+
+### Test di regressione
+
+Usare un ambiente separato da Home Assistant di produzione con Python 3.14:
+
+```sh
+python3.14 -m venv .venv
+.venv/bin/python -m pip install -r requirements_test.txt
+.venv/bin/python -m pytest tests -q
+.venv/bin/python -m ruff check custom_components/pun_sensor tests
+.venv/bin/python -m ruff format --check custom_components/pun_sensor tests
+```
+
+Le dipendenze di test fissano Home Assistant 2026.10.4. I test usano una sua
+istanza temporanea, archivi XML sintetici e risposte HTTP simulate; le connessioni
+di rete sono bloccate. Non accedono a un'istanza HA reale né al GME. La suite copre
+parser/DST, duplicati e intervalli fuori giornata, cache e cambio zona,
+unload/reload, errori e ripristino. Verifica inoltre il download automatico,
+mezzanotte e cambio mese con un orologio simulato, le traduzioni del selettore e
+il generatore del manifest di release. Non certifica tutte le versioni di HA o
+la correttezza dei rendiconti GSE. I controlli GitHub Actions sono
+predisposti anche per i branch di sviluppo e per le PR, con permessi in sola lettura.
+
+Il selettore distingue le zone italiane (`Italia (…)`), le zone virtuali estere
+(`Estero (…)`) e le interconnessioni di coupling (`Scambio (…)`). Le etichette
+non modificano i codici GME salvati. Corsica e Corsica AC sono zone virtuali
+estere, non zone geografiche italiane: vedere il
+[catalogo delle zone GME](https://gme.mercatoelettrico.org/portals/0/Documents/it-IT/20231018_ME_Zone.pdf).
+
+Restano da irrobustire la diagnostica e il recupero delle curve di domani o a 15 min
+quando sono incomplete, senza invalidare quelle di oggi. La compatibilità con
+il minimo HA 2023.4 dichiarato storicamente non è coperta dalla suite attuale.
 
 Ho lasciato un diario dell'esperienza di programmazione di questa integrazione in [questa pagina](DEVELOPMENT.md). Potrete trovare qualche lamentela, ma soprattutto link alle pagine dei progetti che mi hanno aiutato a svilupparla così com'è ora.

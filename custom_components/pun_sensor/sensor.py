@@ -1,5 +1,6 @@
 """Implementazione sensori di pun_sensor."""
 
+from datetime import date
 import logging
 from typing import Any
 
@@ -27,6 +28,7 @@ from homeassistant.helpers.restore_state import (
 )
 from homeassistant.helpers.typing import DiscoveryInfoType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+import homeassistant.util.dt as dt_util
 
 from . import PUNDataUpdateCoordinator
 from .const import (
@@ -37,6 +39,7 @@ from .const import (
     EVENT_UPDATE_PREZZO_ZONALE_15MIN,
     EVENT_UPDATE_PUN,
 )
+from .coordinator import tz_pun
 from .interfaces import Fascia, PunValues
 from .utils import (
     add_timedelta_via_utc,
@@ -49,6 +52,20 @@ from .utils import (
 
 # Ottiene il logger
 _LOGGER = logging.getLogger(__name__)
+
+
+def _price_data_status(
+    coordinator: PUNDataUpdateCoordinator, data_date: date | None
+) -> dict[str, Any]:
+    """Distingue data della cache, ultimo successo e salute del download."""
+    return {
+        "dati_del": data_date.isoformat() if data_date else None,
+        "ultimo_aggiornamento": coordinator.last_successful_update,
+        "dati_non_aggiornati": (
+            data_date != dt_util.now(time_zone=tz_pun).date()
+            or not coordinator.last_update_success
+        ),
+    }
 
 
 async def async_setup_entry(
@@ -115,6 +132,8 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
         self._available: bool = False
         self._native_value: float = 0
 
+        self._data_date: date | None = None
+
     def _handle_coordinator_update(self) -> None:
         """Gestisce l'aggiornamento dei dati dal coordinator."""
 
@@ -126,7 +145,11 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 
         # Aggiorna il sensore in caso di variazione di prezzi
         if coordinator_event != EVENT_UPDATE_PUN:
+            self.async_write_ha_state()
             return
+
+        if self.coordinator.last_successful_update is not None:
+            self._data_date = self.coordinator.last_successful_update.date()
 
         if self.fascia != Fascia.F23:
             # Tutte le fasce tranne F23
@@ -158,7 +181,10 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     def extra_restore_state_data(self) -> ExtraStoredData:
         """Determina i dati da salvare per il ripristino successivo."""
         return RestoredExtraData(
-            {"native_value": self._native_value if self._available else None}
+            {
+                "native_value": self._native_value if self.available else None,
+                "data_date": self._data_date.isoformat() if self._data_date else None,
+            }
         )
 
     async def async_added_to_hass(self) -> None:
@@ -167,9 +193,13 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
 
         # Recupera lo stato precedente, se esiste
         if (old_data := await self.async_get_last_extra_data()) is not None:
+            today = dt_util.now(time_zone=tz_pun).date()
+            if old_data.as_dict().get("data_date") != today.isoformat():
+                return
             if (old_native_value := old_data.as_dict().get("native_value")) is not None:
                 self._available = True
                 self._native_value = old_native_value
+                self._data_date = today
 
     @property
     def should_poll(self) -> bool:
@@ -179,7 +209,14 @@ class PUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity):
     @property
     def available(self) -> bool:
         """Determina se il valore è disponibile."""
-        return self._available
+        return (
+            self._available and self._data_date == dt_util.now(time_zone=tz_pun).date()
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Espone la freschezza dei dati anche durante un errore di rete."""
+        return _price_data_status(self.coordinator, self._data_date)
 
     @property
     def native_value(self) -> float:
@@ -309,6 +346,7 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
         self._available: bool = False
         self._native_value: float = 0
         self._friendly_name: str = "Prezzo fascia corrente"
+        self._data_date: date | None = None
 
     def _handle_coordinator_update(self) -> None:
         """Gestisce l'aggiornamento dei dati dal coordinator."""
@@ -321,7 +359,11 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
 
         # Aggiorna il sensore in caso di variazione di prezzi o di fascia
         if coordinator_event not in (EVENT_UPDATE_PUN, EVENT_UPDATE_FASCIA):
+            self.async_write_ha_state()
             return
+
+        if self.coordinator.last_successful_update is not None:
+            self._data_date = self.coordinator.last_successful_update.date()
 
         if self.coordinator.fascia_corrente is not None:
             self._available = (
@@ -344,8 +386,12 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
         """Determina i dati da salvare per il ripristino successivo."""
         return RestoredExtraData(
             {
-                "native_value": self._native_value if self._available else None,
+                "native_value": self._native_value if self.available else None,
                 "friendly_name": self._friendly_name if self._available else None,
+                "data_date": self._data_date.isoformat() if self._data_date else None,
+                "fascia": self.coordinator.fascia_corrente.value
+                if self.coordinator.fascia_corrente
+                else None,
             }
         )
 
@@ -355,9 +401,19 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
 
         # Recupera lo stato precedente, se esiste
         if (old_data := await self.async_get_last_extra_data()) is not None:
+            today = dt_util.now(time_zone=tz_pun).date()
+            saved = old_data.as_dict()
+            current_band = self.coordinator.fascia_corrente
+            if (
+                saved.get("data_date") != today.isoformat()
+                or current_band is None
+                or saved.get("fascia") != current_band.value
+            ):
+                return
             if (old_native_value := old_data.as_dict().get("native_value")) is not None:
                 self._available = True
                 self._native_value = old_native_value
+                self._data_date = today
             if (
                 old_friendly_name := old_data.as_dict().get("friendly_name")
             ) is not None:
@@ -371,7 +427,14 @@ class PrezzoFasciaPUNSensorEntity(CoordinatorEntity, SensorEntity, RestoreEntity
     @property
     def available(self) -> bool:
         """Determina se il valore è disponibile."""
-        return self._available
+        return (
+            self._available and self._data_date == dt_util.now(time_zone=tz_pun).date()
+        )
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Espone la freschezza dei dati anche durante un errore di rete."""
+        return _price_data_status(self.coordinator, self._data_date)
 
     @property
     def native_value(self) -> float:

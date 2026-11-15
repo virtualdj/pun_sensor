@@ -2,6 +2,7 @@
 
 from datetime import date, datetime, timedelta, timezone
 import logging
+from xml.etree.ElementTree import Element
 from zipfile import ZipFile
 from zoneinfo import ZoneInfo
 
@@ -427,24 +428,48 @@ def get_datetime_from_periodo_15min(
     return end_utc.astimezone(ref_tz)
 
 
+def _validated_period(
+    record: Element,
+    day: date,
+    tag: str,
+    maximum: int,
+    seen: set[tuple[date, bool, int]],
+) -> int:
+    """Valida data, intervallo e unicità prima di modificare le nuove mappe."""
+    if record.findtext("Data") != day.strftime("%Y%m%d"):
+        raise ValueError(f"Data incoerente nel file XML del {day}")
+    period = int(record.findtext(tag) or "")
+    if not 1 <= period <= maximum:
+        raise ValueError(f"Periodo {period} non valido per {day} (max: {maximum}).")
+    key = (day, tag == "Periodo", period)
+    if key in seen:
+        raise ValueError(f"Periodo duplicato: {key}")
+    seen.add(key)
+    return period
+
+
 def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
     """Estrae i valori del pun per ogni fascia da un archivio zip contenente un XML.
 
     Args:
     archive (ZipFile): archivio ZIP con i file XML all'interno.
-    pun_data (PunData): riferimento alla struttura che verrà modificata con i dati da XML.
+    pun_data (PunData): acquisizione precedente, usata soltanto per la zona geografica.
     today (date): data di oggi, utilizzata per memorizzare il prezzo zonale.
 
     Returns:
-    List[ list[MONO: float], list[F1: float], list[F2: float], list[F3: float] ]
+    PunData: nuova acquisizione; quella precedente resta intatta anche in caso di errore.
 
     """
     # Carica le festività
     it_holidays = holidays.IT()  # type: ignore[attr-defined]
 
-    # Azzera i dati precedenti
-    for fascia_da_svuotare in pun_data.pun.values():
-        fascia_da_svuotare.clear()
+    # Pubblica la nuova acquisizione solo dopo il parsing completo. Non accumulare
+    # i giorni passati e non alterare la cache valida se un file non è leggibile.
+    previous_data = pun_data
+    pun_data = PunData()
+    pun_data.zona = previous_data.zona
+    tomorrow = today + timedelta(days=1)
+    seen_periods: set[tuple[date, bool, int]] = set()
 
     # Esamina ogni file XML nello ZIP (ordinandoli prima)
     for fn in sorted(archive.namelist()):
@@ -484,7 +509,7 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
             max_periodi: int = 4 * get_total_hours(dat_date)
 
             # Considera solo oggi e domani per i prezzi ogni 15 minuti
-            if dat_date >= today:
+            if today <= dat_date <= tomorrow:
                 # Estrae le rimanenti informazioni
                 for prezzi in xml_root.iter("Prezzi15"):
                     # Verifica che il mercato sia corretto
@@ -506,17 +531,9 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                         break
 
                     # Estrae il periodo dall'XML
-                    periodo_xml: int = int(prezzi.find("Periodo").text)
-
-                    # Valida il periodo XML
-                    # 1 .. 96 normalmente, ma anche 1..92 o 1..100 nei cambi ora
-                    if not (1 <= periodo_xml <= max_periodi):
-                        _LOGGER.warning(
-                            "Periodo %s non valido per %s (max: %s).",
-                            periodo_xml,
-                            dat_string,
-                            max_periodi,
-                        )
+                    periodo_xml = _validated_period(
+                        prezzi, dat_date, "Periodo", max_periodi, seen_periods
+                    )
 
                     # Converte il periodo in un datetime
                     orario_prezzo_15min: datetime = get_datetime_from_periodo_15min(
@@ -575,17 +592,9 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                     break
 
                 # Estrae l'ora dall'XML
-                ora_xml: int = int(prezzi.find("Ora").text)
-
-                # Valida l'orario XML
-                # 1..24 normalmente, ma anche 1..23 o 1..25 nei cambi ora
-                if not (1 <= ora_xml <= max_ore):
-                    _LOGGER.warning(
-                        "Orario %s non valido per %s (max: %s).",
-                        ora_xml,
-                        dat_string,
-                        max_ore,
-                    )
+                ora_xml = _validated_period(
+                    prezzi, dat_date, "Ora", max_ore, seen_periods
+                )
 
                 # Converte l'ora in un datetime
                 orario_prezzo: datetime = get_datetime_from_ordinal_hour(
@@ -611,7 +620,7 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                         pun_data.pun[fascia].append(prezzo)
 
                     # Per il PUN orario, considera solo oggi e domani
-                    if dat_date >= today:
+                    if today <= dat_date <= tomorrow:
                         # Salva il prezzo per quell'orario
                         pun_data.pun_orari[str(orario_prezzo)] = prezzo
                 else:
@@ -621,7 +630,7 @@ def extract_xml(archive: ZipFile, pun_data: PunData, today: date) -> PunData:
                     )
 
                 # Per i prezzi zonali, considera solo oggi e domani
-                if dat_date >= today:
+                if today <= dat_date <= tomorrow:
                     # Controlla che la zona del prezzo zonale sia impostata
                     if pun_data.zona is not None:
                         # Estrae il prezzo zonale dall'XML in un float

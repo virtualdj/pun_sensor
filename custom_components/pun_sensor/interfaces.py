@@ -42,14 +42,9 @@ class Fascia(Enum):
 class PunValues:
     """Classe che contiene il PUN attuale di ciascuna fascia."""
 
-    value: dict[Fascia, float]
-    value = {
-        Fascia.MONO: 0.0,
-        Fascia.F1: 0.0,
-        Fascia.F2: 0.0,
-        Fascia.F3: 0.0,
-        Fascia.F23: 0.0,
-    }
+    def __init__(self) -> None:
+        """Mantiene i valori separati per ciascuna istanza del coordinator."""
+        self.value: dict[Fascia, float] = dict.fromkeys(Fascia, 0.0)
 
 
 class Zona(Enum):

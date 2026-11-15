@@ -22,9 +22,7 @@ else:
 
 # Configurazione del selettore compatibile con HA 2023.4.0
 selector_config = selector.SelectSelectorConfig(
-    options=[
-        selector.SelectOptionDict(value=zona.name, label=zona.value) for zona in Zona
-    ],
+    options=[zona.name.lower() for zona in Zona],
     mode=selector.SelectSelectorMode.DROPDOWN,
     translation_key="zona",
 )
@@ -45,7 +43,10 @@ class PUNOptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] | None = {}
         if user_input is not None:
             # Configurazione valida (validazione integrata nello schema)
-            return self.async_create_entry(title="PUN", data=user_input)
+            return self.async_create_entry(
+                title="PUN",
+                data={**user_input, CONF_ZONA: user_input[CONF_ZONA].upper()},
+            )
 
         # Schema dati di opzione (con default sui valori attuali)
         data_schema = {
@@ -53,7 +54,7 @@ class PUNOptionsFlow(config_entries.OptionsFlow):
                 CONF_ZONA,
                 default=self.config_entry.options.get(
                     CONF_ZONA, self.config_entry.data[CONF_ZONA]
-                ),
+                ).lower(),
             ): selector.SelectSelector(selector_config),
             vol.Required(
                 CONF_SCAN_HOUR,
@@ -98,13 +99,16 @@ class PUNConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             # Configurazione valida (validazione integrata nello schema)
-            return self.async_create_entry(title="PUN", data=user_input)
+            return self.async_create_entry(
+                title="PUN",
+                data={**user_input, CONF_ZONA: user_input[CONF_ZONA].upper()},
+            )
 
         # Schema dati di configurazione (con default fissi)
         data_schema = {
-            vol.Required(CONF_ZONA, default=DEFAULT_ZONA.name): selector.SelectSelector(
-                selector_config
-            ),
+            vol.Required(
+                CONF_ZONA, default=DEFAULT_ZONA.name.lower()
+            ): selector.SelectSelector(selector_config),
             vol.Required(CONF_SCAN_HOUR, default=1): vol.All(
                 cv.positive_int, vol.Range(min=0, max=23)
             ),

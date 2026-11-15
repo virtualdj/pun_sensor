@@ -1,0 +1,5 @@
+# The helper pins Home Assistant, pytest and their compatible test dependencies.
+pytest-homeassistant-custom-component==0.13.375
+defusedxml==0.7.1
+holidays==0.108
+ruff==0.17.4

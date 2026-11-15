@@ -1,16 +1,18 @@
 """Coordinator per pun_sensor."""
 
+import asyncio
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
 import io
 import logging
+from math import isfinite
 import random
 from statistics import mean
 from typing import Any
 import zipfile
 from zoneinfo import ZoneInfo
 
-from aiohttp import ClientSession, ServerConnectionError
+from aiohttp import ClientSession, ClientTimeout, ServerConnectionError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -40,6 +42,7 @@ from .utils import (
     get_fascia,
     get_hour_datetime,
     get_next_date,
+    get_total_hours,
 )
 
 # Ottiene il logger
@@ -47,6 +50,42 @@ _LOGGER = logging.getLogger(__name__)
 
 # Usa sempre il fuso orario italiano (i dati del sito sono per il mercato italiano)
 tz_pun: ZoneInfo = ZoneInfo("Europe/Rome")
+
+MAX_DOWNLOAD_BYTES = 10 * 1024 * 1024
+MAX_UNCOMPRESSED_BYTES = 64 * 1024 * 1024
+MAX_ARCHIVE_FILES = 128
+
+
+def _parse_download(payload: bytes, previous: PunData, today: date) -> PunData:
+    """Valida e analizza lo ZIP nel thread executor, senza modificare la cache."""
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        entries = archive.infolist()
+        if (
+            len(entries) > MAX_ARCHIVE_FILES
+            or sum(info.file_size for info in entries) > MAX_UNCOMPRESSED_BYTES
+        ):
+            raise UpdateFailed("Archivio GME troppo grande dopo la decompressione.")
+        result = extract_xml(archive, previous, today)
+    current_prices = [
+        key for key in result.pun_orari if datetime.fromisoformat(key).date() == today
+    ]
+    if len(current_prices) != get_total_hours(today):
+        raise UpdateFailed("L'archivio GME non contiene tutti i prezzi orari di oggi.")
+    price_sets = [
+        *result.pun.values(),
+        result.pun_orari.values(),
+        result.prezzi_zonali.values(),
+        result.pun_15min.values(),
+        result.prezzi_zonali_15min.values(),
+    ]
+    if any(
+        not isfinite(price)
+        for prices in price_sets
+        for price in prices
+        if price is not None
+    ):
+        raise UpdateFailed("L'archivio GME contiene un prezzo non finito.")
+    return result
 
 
 class PUNDataUpdateCoordinator(DataUpdateCoordinator):
@@ -136,6 +175,10 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Inizializza i valori di default
         self.web_retries: list[int] = WEB_RETRIES_MINUTES.copy()
         self.schedule_token: Callable | None = None
+        self._clock_tokens: dict[str, Callable] = {}
+        self._web_tasks: set[asyncio.Task] = set()
+        self._stopped = False
+        self.last_successful_update: datetime | None = None
         self.pun_values: PunValues = PunValues()
         self.fascia_corrente: Fascia | None = None
         self.fascia_successiva: Fascia | None = None
@@ -156,6 +199,31 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         if self.schedule_token is not None:
             self.schedule_token()
             self.schedule_token = None
+
+    @callback
+    def stop(self) -> None:
+        """Ferma callback e download quando la configurazione viene scaricata."""
+        self._stopped = True
+        self.clean_tokens()
+        for cancel in self._clock_tokens.values():
+            cancel()
+        self._clock_tokens.clear()
+        for task in self._web_tasks:
+            task.cancel()
+
+    def _schedule_clock(self, event: str, action: Callable, when: datetime) -> None:
+        """Mantiene una sola schedulazione per ciascun aggiornamento locale."""
+        if cancel := self._clock_tokens.pop(event, None):
+            cancel()
+        if not self._stopped:
+            self._clock_tokens[event] = async_track_point_in_time(
+                self.hass, action, when
+            )
+
+    def _notify_clock(self, event: str) -> None:
+        """Notifica il tempo locale senza cancellare un errore di download."""
+        self.data = {COORD_EVENT: event}
+        self.async_update_listeners()
 
     def update_scan_minutes_from_config(
         self, hass: HomeAssistant, config: ConfigEntry, new_minute: bool = False
@@ -189,9 +257,12 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Aggiornamento dati a intervalli prestabiliti."""
+        if self._stopped:
+            return {}
 
         # Calcola l'intervallo di date per il mese corrente
-        date_end: date = dt_util.now().date()
+        today = dt_util.now(time_zone=tz_pun).date()
+        date_end: date = today
         date_start: date = date(date_end.year, date_end.month, 1)
 
         # All'inizio del mese, aggiunge i valori del mese precedente
@@ -225,10 +296,9 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
         # Effettua il download dello ZIP con i file XML
         _LOGGER.debug("Inizio download file ZIP con XML.")
-        async with self.session.get(download_url, headers=heads) as response:
-            # Aspetta la request
-            bytes_response = await response.read()
-
+        async with self.session.get(
+            download_url, headers=heads, timeout=ClientTimeout(total=30)
+        ) as response:
             # Se la richiesta NON e' andata a buon fine ritorna l'errore subito
             if response.status != 200:
                 _LOGGER.error("Richiesta fallita con errore %s", response.status)
@@ -236,32 +306,27 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
                     f"Richiesta fallita con errore {response.status}"
                 )
 
-            # La richiesta e' andata a buon fine, tenta l'estrazione
-            try:
-                archive = zipfile.ZipFile(io.BytesIO(bytes_response), "r")
+            payload = bytearray()
+            async for chunk in response.content.iter_chunked(64 * 1024):
+                payload.extend(chunk)
+                if len(payload) > MAX_DOWNLOAD_BYTES:
+                    raise UpdateFailed("Risposta GME troppo grande.")
 
-            # Ritorna error se l'output non è uno ZIP, o ha un errore IO
-            except (zipfile.BadZipfile, OSError) as e:  # not a zip:
-                _LOGGER.error(
-                    "Download fallito con URL: %s, lunghezza %s, risposta %s",
-                    download_url,
-                    response.content_length,
-                    response.status,
-                )
-                raise UpdateFailed("Archivio ZIP scaricato dal sito non valido.") from e
-
-        # Mostra i file nell'archivio
-        _LOGGER.debug(
-            "%s file trovati nell'archivio (%s)",
-            len(archive.namelist()),
-            ", ".join(str(fn) for fn in archive.namelist()),
+        # ZIP, XML e festività non devono bloccare l'event loop di HA.
+        new_data = await self.hass.async_add_executor_job(
+            _parse_download, bytes(payload), self.pun_data, today
         )
-
-        # Estrae i dati dall'archivio
-        self.pun_data = extract_xml(
-            archive, self.pun_data, dt_util.now(time_zone=tz_pun).date()
-        )
-        archive.close()
+        if self._stopped:
+            return {}
+        if dt_util.now(time_zone=tz_pun).date() != today:
+            raise UpdateFailed(
+                "La data è cambiata durante l'acquisizione GME; riprovare."
+            )
+        if new_data.zona != self.pun_data.zona:
+            raise UpdateFailed(
+                "La zona è cambiata durante l'acquisizione GME; riprovare."
+            )
+        self.pun_data = new_data
 
         # Per ogni fascia, calcola il valore del pun
         for fascia, value_list in self.pun_data.pun.items():
@@ -305,11 +370,14 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
         # Notifica che i dati PUN (prezzi) sono stati aggiornati
+        self.last_successful_update = dt_util.now(time_zone=tz_pun)
         self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PUN})
-        return {}
+        return {COORD_EVENT: EVENT_UPDATE_PUN}
 
     async def update_fascia(self, now=None) -> None:
         """Aggiorna la fascia oraria corrente (al cambio fascia)."""
+        if self._stopped:
+            return
 
         # Scrive l'ora corrente (a scopi di debug)
         _LOGGER.debug(
@@ -338,19 +406,33 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
         # Notifica che i dati sono stati aggiornati (fascia)
-        self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_FASCIA})
+        self._notify_clock(EVENT_UPDATE_FASCIA)
 
         # Schedula la prossima esecuzione
-        async_track_point_in_time(
-            self.hass, self.update_fascia, self.prossimo_cambio_fascia
+        self._schedule_clock(
+            EVENT_UPDATE_FASCIA, self.update_fascia, self.prossimo_cambio_fascia
         )
 
     async def update_pun(self, now=None) -> None:
         """Aggiorna i prezzi PUN da Internet (funziona solo se schedulata)."""
+        if self._stopped:
+            return
+        task = asyncio.current_task()
+        assert task is not None
+        self._web_tasks.add(task)
+        try:
+            await self._update_pun()
+        finally:
+            self._web_tasks.discard(task)
+
+    async def _update_pun(self) -> None:
+        """Scarica i prezzi e programma il prossimo tentativo."""
         # Aggiorna i dati da web
         try:
             # Esegue l'aggiornamento
             await self._async_update_data()
+            if self._stopped:
+                return
 
             # Se non ci sono eccezioni, ha avuto successo
             # Ricarica i tentativi per la prossima esecuzione
@@ -359,6 +441,7 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
         # Errore nel fetch dei dati se la response non e' 200
         # pylint: disable=broad-exception-caught
         except (Exception, UpdateFailed, ServerConnectionError) as e:
+            self.async_set_update_error(e)
             # Errori durante l'esecuzione dell'aggiornamento, riprova dopo
             # Annulla eventuali schedulazioni attive
             self.clean_tokens()
@@ -423,35 +506,43 @@ class PUNDataUpdateCoordinator(DataUpdateCoordinator):
 
     async def update_prezzo_zonale(self, now=None) -> None:
         """Aggiorna il prezzo zonale corrente (ogni ora)."""
+        if self._stopped:
+            return
 
         # Aggiorna il nuovo orario
         self.orario_prezzo = get_hour_datetime(dt_util.now(time_zone=tz_pun))
 
         # Notifica che i dati sono stati aggiornati (orario prezzo zonale)
-        self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PREZZO_ZONALE})
+        self._notify_clock(EVENT_UPDATE_PREZZO_ZONALE)
 
         # Schedula la prossima esecuzione all'ora successiva
         # (tenendo conto del cambio ora legale/solare)
         next_update_prezzo_zonale: datetime = add_timedelta_via_utc(
             dt=self.orario_prezzo, hours=1
         )
-        async_track_point_in_time(
-            self.hass, self.update_prezzo_zonale, next_update_prezzo_zonale
+        self._schedule_clock(
+            EVENT_UPDATE_PREZZO_ZONALE,
+            self.update_prezzo_zonale,
+            next_update_prezzo_zonale,
         )
 
     async def update_prezzo_zonale_15min(self, now=None) -> None:
         """Aggiorna il prezzo zonale a 15 minuti corrente."""
+        if self._stopped:
+            return
 
         # Aggiorna il nuovo orario
         self.orario_prezzo_15min = get_15min_datetime(dt_util.now(time_zone=tz_pun))
 
         # Notifica che i dati sono stati aggiornati (orario prezzo zonale a 15 minuti)
-        self.async_set_updated_data({COORD_EVENT: EVENT_UPDATE_PREZZO_ZONALE_15MIN})
+        self._notify_clock(EVENT_UPDATE_PREZZO_ZONALE_15MIN)
 
         # Schedula la prossima esecuzione ai 15 minuti successivi ("spaccati")
         next_update_prezzo_zonale_15min: datetime = add_timedelta_via_utc(
             dt=self.orario_prezzo_15min, minutes=15
         )
-        async_track_point_in_time(
-            self.hass, self.update_prezzo_zonale_15min, next_update_prezzo_zonale_15min
+        self._schedule_clock(
+            EVENT_UPDATE_PREZZO_ZONALE_15MIN,
+            self.update_prezzo_zonale_15min,
+            next_update_prezzo_zonale_15min,
         )

@@ -2,14 +2,36 @@ name: "Validate"
 
 on:
   push:
-    branches:
-      - master
-  pull_request_target:
+  pull_request:
     branches:
       - master
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  tests:
+    name: Regression tests (Home Assistant)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+      - name: Install pinned test environment
+        run: python -m pip install -r requirements_test.txt
+      - name: Lint integration and tests
+        run: python -m ruff check custom_components/pun_sensor tests
+      - name: Check formatting
+        run: python -m ruff format --check custom_components/pun_sensor tests
+      - name: Run isolated regression tests
+        run: python -m pytest tests -q
+
   validate-ruff:
     name: Validate with ruff
     runs-on: ubuntu-latest

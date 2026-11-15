@@ -134,4 +134,4 @@ dmypy.json
 
 # Other Home Assistant custom_components
 /custom_components/*
-!/custom_components/pun_sensor/*
+!/custom_components/pun_sensor/
